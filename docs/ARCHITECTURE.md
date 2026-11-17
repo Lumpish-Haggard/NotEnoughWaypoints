@@ -23,7 +23,7 @@ The game's story script `_Waypoints` (in the Shared module) does everything else
   - a rule locks the Hollow whenever the game locks its own Emerald Grove waypoint (`PROC_LockWaypointForAll("WAYP_DEN_Camp")`, when the druids seal the Grove), so it never leads past the barrier.
 - The names, in `Localization/English/NotEnoughWaypoints.loca`. The file name matters: a mod file called `english.loca` would replace the game's own and remove every English text in the game, so `pack.ps1` refuses to build a pak with anything but `NotEnoughWaypoints.loca` in it.
 
-The mod replaces none of the game's files and needs no Script Extender.
+The mod replaces none of the game's files and needs no other mods.
 
 ## Existing saves
 

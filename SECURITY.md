@@ -8,7 +8,7 @@ The mod is data for the game, loaded by the game itself:
 - one story script, run by the game's own story engine, that declares the waypoints;
 - the waypoint names.
 
-It contains no Script Extender code, writes no files of its own, makes no internet connections and runs no external programs.
+It runs no code of its own outside that story script, writes no files, makes no internet connections and runs no external programs.
 
 The developer tools in `tools/` run LSLib's `Divine.exe` on your machine to read your local game files into `tools/.cache/`. They never upload anything. `pack.ps1` runs `Divine.exe` to build the pak.
 

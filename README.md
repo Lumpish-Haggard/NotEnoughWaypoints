@@ -5,7 +5,6 @@
 **Six new waypoint shrines for Baldur's Gate 3, in the places you keep walking back to.**
 
 ![BG3 Patch 8](https://img.shields.io/badge/BG3-Patch%208-7a1f1f)
-![Script Extender: not needed](https://img.shields.io/badge/Script%20Extender-not%20needed-lightgrey)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
 [Download](../../releases/latest) ·
@@ -41,7 +40,7 @@ They are the game's own waypoint shrines, with the game's rune on them, and they
 - **They follow the story.** Like the game's own waypoints, each is locked with the rest of its act when the story moves on. The Hollow's shrine is also locked when the druids seal the Emerald Grove, at the same moment as the game's Grove waypoint, so it never gets you past the barrier.
 - **Sovereign Glut comes along**: the Arcane Tower counts as an Underdark waypoint, so he follows the party there like he does between the game's Underdark waypoints.
 - **New game or existing save**: the story picks the waypoints up when you load.
-- **No other mods needed**: no Script Extender. The mod adds its own objects, one small story script and the waypoint names; it replaces none of the game's files.
+- **No other mods needed.** The mod adds its own objects, one small story script and the waypoint names; it replaces none of the game's files.
 - **Multiplayer**: waypoints unlock for the whole party, as usual.
 
 ## Requirements
@@ -49,7 +48,6 @@ They are the game's own waypoint shrines, with the game's rune on them, and they
 | | |
 |---|---|
 | Baldur's Gate 3 | Patch 8. The shrines are placed and checked against the Patch 8 Hotfix 10 game files. |
-| Script Extender | Not needed |
 
 ## Installation
 
