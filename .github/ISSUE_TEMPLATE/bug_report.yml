@@ -1,0 +1,71 @@
+name: Bug report
+description: Something does not work (a waypoint is missing from the map, travel fails, the game shows an error).
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! If a shrine floats, sinks into the floor, clips through something or blocks a path, please use the **Placement problem** form instead.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: waypoint
+    attributes:
+      label: Which waypoint?
+      options:
+        - The Hollow (Emerald Grove)
+        - Underdark - Arcane Tower
+        - Shattered Sanctum
+        - Moonrise Towers - Main Floor
+        - Open Hand Temple
+        - Guildhall
+        - All of them
+    validations:
+      required: true
+
+  - type: dropdown
+    id: save
+    attributes:
+      label: New game or existing save?
+      options:
+        - I started a new game with the mod
+        - I added the mod to a save I already had
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Game version
+      placeholder: "Patch 8 Hotfix 10"
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Game mode
+      options:
+        - Single player
+        - Multiplayer (host)
+        - Multiplayer (client)
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: Your load order, or at least other mods that add waypoints, change fast travel or change the story.

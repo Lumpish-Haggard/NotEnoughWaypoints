@@ -1,0 +1,27 @@
+# Normalise line endings. The game and LSLib read LF fine.
+* text=auto eol=lf
+
+# Windows scripts keep CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary game and media files
+*.pak binary
+*.lsf binary
+*.loca binary
+*.data binary
+*.dds binary
+*.png binary
+*.jpg binary
+*.webp binary
+*.gif binary
+*.zip binary
+
+# GitHub: the level, name and story files are generated from waypoints.json; show .lsx as XML
+Mods/NotEnoughWaypoints/Globals/** linguist-generated=true
+Mods/NotEnoughWaypoints/Levels/** linguist-generated=true
+Mods/NotEnoughWaypoints/Localization/** linguist-generated=true
+Mods/NotEnoughWaypoints/Story/** linguist-generated=true
+Localization/** linguist-generated=true
+*.lsx linguist-language=XML

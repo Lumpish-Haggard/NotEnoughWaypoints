@@ -1,0 +1,33 @@
+# Game data extracted from your own install (regenerate with tools/extract_game_data.py).
+# Never commit it: it is Larian's data and several megabytes.
+tools/.cache/
+
+# Packaging output
+build/
+dist/
+*.pak
+
+# Local Nexus Mods notes (upload checklist, screenshots). The published page text
+# itself is tracked in .github/nexus/.
+/nexus/
+
+# Private reference material and scratch data. It stays on each contributor's
+# machine: never committed, never shipped.
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

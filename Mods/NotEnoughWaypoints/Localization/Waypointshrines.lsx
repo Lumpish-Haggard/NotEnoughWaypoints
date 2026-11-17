@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<save>
+	<version major="4" minor="0" revision="9" build="319" lslib_meta="v1,bswap_guids,lsf_keys_adjacency" />
+	<region id="TranslatedStringKeys">
+		<node id="TranslatedStringKeys">
+			<children>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="hf7e51abbg139bg47e7gbaacgbd65a2499364" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_DEN_Hollow" />
+				</node>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="hfe2c9348g5d6fg444eg9497gfc04c35dc737" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_UND_ArcaneTower" />
+				</node>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="h924a2d0dg4442g41ddg9ef6g76aad2e80745" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_GOB_Sanctum" />
+				</node>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="h5fe54efbg8f50g462ag8e3bg4e37d8b46f24" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_MOO_MainFloor" />
+				</node>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="h8dfaf755gcd83g4dacgb7eegfe5a7bfde752" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_WYR_OpenHandTemple" />
+				</node>
+				<node id="TranslatedStringKey">
+					<attribute id="Content" type="TranslatedString" handle="h18fe96c0gf668g42b0g9375g086c5450629c" version="1" />
+					<attribute id="ExtraData" type="LSString" value="" />
+					<attribute id="Speaker" type="FixedString" value="" />
+					<attribute id="Stub" type="bool" value="True" />
+					<attribute id="UUID" type="FixedString" value="NEW_WAYP_LOW_Guildhall" />
+				</node>
+			</children>
+		</node>
+	</region>
+</save>

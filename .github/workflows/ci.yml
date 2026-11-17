@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Waypoint checks and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Check waypoints.json, meta.lsx and the generated mod files (offline)
+        run: python tools/build_waypoints.py --check
+
+      - name: Run the tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check the Nexus Mods page text
+        run: python tools/nexus_page.py check

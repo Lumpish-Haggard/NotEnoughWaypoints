@@ -1,0 +1,26 @@
+name: Waypoint idea
+description: Suggest a place that needs a waypoint.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: where
+    attributes:
+      label: Where?
+      description: The place, the act, and who or what is there (for example "Act 2, the Last Light Inn's courtyard, next to the quartermaster").
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why there?
+      description: How far it is from the nearest waypoint now, and how often you go there.
+    validations:
+      required: true
+
+  - type: textarea
+    id: careful
+    attributes:
+      label: Anything to watch out for?
+      description: Optional. Story moments that seal the area, fights, or places where fast travel is blocked.

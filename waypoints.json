@@ -1,0 +1,72 @@
+{
+  "waypoints": [
+    {
+      "id": "NEW_WAYP_DEN_Hollow",
+      "name": "The Hollow",
+      "where": "Emerald Grove: on the floor of the Hollow, below Okta's and Auntie Ethel's stalls, across from Dammon's forge",
+      "level": "WLD_Main_A",
+      "group": "Act1",
+      "handle": "hf7e51abbg139bg47e7gbaacgbd65a2499364",
+      "shrine": {"guid": "968d6ac1-6eab-4906-9107-31fa006de392", "position": [184.75, 18.147, 552.25]},
+      "trigger": {"guid": "4a56b43b-456d-4556-8d14-d7f62c62b4e3", "position": [182.75, 17.777, 552.25]},
+      "decal": {"guid": "9a204f2b-e1ec-4461-b214-fd16324f9934", "style": "dark"},
+      "lockWith": "WAYP_DEN_Camp"
+    },
+    {
+      "id": "NEW_WAYP_UND_ArcaneTower",
+      "name": "Underdark - Arcane Tower",
+      "where": "Underdark: outside the Arcane Tower's front door, at the top of the stairs",
+      "level": "WLD_Main_A",
+      "group": "Act1",
+      "handle": "hfe2c9348g5d6fg444eg9497gfc04c35dc737",
+      "shrine": {"guid": "8b98077f-ef81-4f3b-9b83-a7b8dbc6042a", "position": [-18.75, 31.951, -287.75]},
+      "trigger": {"guid": "5f0acf54-f384-46f5-8565-fb29d2eb1d69", "position": [-18.75, 32.041, -285.75]},
+      "decal": {"guid": "7db90cb4-db44-431b-93df-0e638ceee428", "style": "dark"},
+      "underdark": true
+    },
+    {
+      "id": "NEW_WAYP_GOB_Sanctum",
+      "name": "Shattered Sanctum",
+      "where": "Goblin camp: inside the Shattered Sanctum, east of the spider pits, between Dror Ragzlin's throne room, Minthara and True Soul Gut",
+      "level": "WLD_Main_A",
+      "group": "Act1",
+      "handle": "h924a2d0dg4442g41ddg9ef6g76aad2e80745",
+      "shrine": {"guid": "e93a3786-7fed-49f7-b38f-4a9a8b84f274", "position": [312.75, 41.096, 15.75]},
+      "trigger": {"guid": "8e608623-0a37-4ad7-b174-522485ae5b3a", "position": [310.75, 41.046, 15.75]},
+      "decal": {"guid": "e0f66b36-4248-4303-8cb6-73d5fc95bd17", "style": "dark"}
+    },
+    {
+      "id": "NEW_WAYP_MOO_MainFloor",
+      "name": "Moonrise Towers - Main Floor",
+      "where": "Moonrise Towers: on the main floor inside the front doors, next to Lann Tarv's stall",
+      "level": "SCL_Main_A",
+      "group": "Act2",
+      "handle": "h5fe54efbg8f50g462ag8e3bg4e37d8b46f24",
+      "shrine": {"guid": "36532ff4-cbfa-435e-a268-523601497d71", "position": [-157.75, 21.515, -170.75]},
+      "trigger": {"guid": "b0b7698a-0c95-43a8-9479-db28f59df4de", "position": [-155.75, 21.305, -170.75]},
+      "decal": {"guid": "f64e26c6-1cb2-4ab9-9345-790b3aa5cc04", "style": "dark"}
+    },
+    {
+      "id": "NEW_WAYP_WYR_OpenHandTemple",
+      "name": "Open Hand Temple",
+      "where": "Rivington: in the street outside the Open Hand Temple, a few steps from the Circus of the Last Days",
+      "level": "BGO_Main_A",
+      "group": "Act3",
+      "handle": "h8dfaf755gcd83g4dacgb7eegfe5a7bfde752",
+      "shrine": {"guid": "7ca5a406-5bdb-48ec-b5a6-5a908a66bdb8", "position": [-21.75, 45.463, -12.25]},
+      "trigger": {"guid": "4812c9a2-2d75-4945-bea1-dc6f31a9904f", "position": [-23.75, 45.513, -12.25]},
+      "decal": {"guid": "c2f3c09a-d84f-4ecb-886c-268d4f4cf776", "style": "light"}
+    },
+    {
+      "id": "NEW_WAYP_LOW_Guildhall",
+      "name": "Guildhall",
+      "where": "Lower City: in Nine-Fingers Keene's hall in the Guildhall, by the south wall",
+      "level": "CTY_Main_A",
+      "group": "Act3b",
+      "handle": "h18fe96c0gf668g42b0g9375g086c5450629c",
+      "shrine": {"guid": "a6b385f3-6bcc-4c81-b288-e0bc73a4e246", "position": [-40.25, 30.534, 760.75]},
+      "trigger": {"guid": "9f9805fa-361a-42d2-aa01-0d0da9c71fa5", "position": [-40.25, 30.584, 762.75]},
+      "decal": {"guid": "9778a10c-4a0f-4761-9f1b-0f66a71aa325", "style": "dark"}
+    }
+  ]
+}

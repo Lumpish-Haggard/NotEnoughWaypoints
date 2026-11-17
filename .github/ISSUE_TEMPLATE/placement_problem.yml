@@ -1,0 +1,43 @@
+name: Placement problem
+description: A shrine floats, sinks into the floor, clips through something, blocks a path, or you arrive somewhere awkward.
+title: "[Placement] "
+labels: ["placement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every shrine was placed with the game's own navigation data, but only the game shows what it really looks like. A screenshot helps most.
+
+  - type: dropdown
+    id: waypoint
+    attributes:
+      label: Which waypoint?
+      options:
+        - The Hollow (Emerald Grove)
+        - Underdark - Arcane Tower
+        - Shattered Sanctum
+        - Moonrise Towers - Main Floor
+        - Open Hand Temple
+        - Guildhall
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong?
+      description: For example "the shrine stands in the doorway" or "the party arrives half inside a wall".
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Drag a screenshot into this box.
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Where would be better?
+      description: Optional. A nearby spot that you think works, described or in a second screenshot.

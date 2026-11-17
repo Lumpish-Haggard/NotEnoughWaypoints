@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<save>
+	<version major="4" minor="0" revision="9" build="0" lslib_meta="v1,bswap_guids,lsf_adjacency" />
+	<region id="Templates">
+		<node id="Templates">
+			<children>
+				<node id="GameObjects">
+					<attribute id="Angle" type="float" value="-1" />
+					<attribute id="Flag" type="int32" value="1" />
+					<attribute id="IsGlobal" type="bool" value="True" />
+					<attribute id="LevelName" type="FixedString" value="WLD_Main_A" />
+					<attribute id="MapKey" type="FixedString" value="5f0acf54-f384-46f5-8565-fb29d2eb1d69" />
+					<attribute id="Name" type="LSString" value="S_NEW_WAYP_UND_ArcaneTower_Trigger" />
+					<attribute id="TemplateName" type="FixedString" value="f7bd7465-b0ec-45b3-81f6-6f01d6c68c48" />
+					<attribute id="Type" type="FixedString" value="trigger" />
+					<attribute id="Zoom" type="bool" value="True" />
+					<children>
+						<node id="FadeChildren" />
+						<node id="LayerList">
+							<children>
+								<node id="Layers">
+									<children>
+										<node id="Object">
+											<attribute id="MapKey" type="FixedString" value="WLD_Main_A" />
+										</node>
+									</children>
+								</node>
+							</children>
+						</node>
+						<node id="Transform">
+							<attribute id="Position" type="fvec3" value="-18.75 32.041 -285.75" />
+							<attribute id="RotationQuat" type="fvec4" value="0 0 0 1" />
+							<attribute id="Scale" type="float" value="1" />
+						</node>
+					</children>
+				</node>
+			</children>
+		</node>
+	</region>
+</save>
