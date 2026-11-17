@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting! If a shrine floats, sinks into the floor, clips through something or blocks a path, please use the **Placement problem** form instead.
+        Thanks for reporting! If a waypoint floats, sinks into the floor, clips through something or blocks a path, please use the **Placement problem** form instead.
 
   - type: textarea
     id: what-happened

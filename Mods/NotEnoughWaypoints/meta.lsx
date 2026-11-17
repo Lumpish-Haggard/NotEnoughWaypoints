@@ -9,7 +9,7 @@
         <node id="ModuleInfo">
           <attribute id="Author" type="LSString" value="LumpishHaggard" />
           <attribute id="CharacterCreationLevelName" type="FixedString" value="" />
-          <attribute id="Description" type="LSString" value="Adds six waypoint shrines where the game has none: the Hollow, the Arcane Tower, the Shattered Sanctum, inside Moonrise Towers, the Open Hand Temple and the Guildhall. No other mods needed." />
+          <attribute id="Description" type="LSString" value="Adds six waypoints where the game has none: the Hollow, the Arcane Tower, the Shattered Sanctum, inside Moonrise Towers, the Open Hand Temple and the Guildhall. No other mods needed." />
           <attribute id="FileSize" type="uint64" value="0" />
           <attribute id="Folder" type="LSString" value="NotEnoughWaypoints" />
           <attribute id="LobbyLevelName" type="FixedString" value="" />

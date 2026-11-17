@@ -161,7 +161,8 @@ $required = @(
 foreach ($wp in $Waypoints) {
     $required += "Mods/$ModName/Globals/$($wp.level)/Items/$($wp.shrine.guid).lsf",
         "Mods/$ModName/Globals/$($wp.level)/Triggers/$($wp.trigger.guid).lsf",
-        "Mods/$ModName/Levels/$($wp.level)/Decals/$($wp.decal.guid).lsf"
+        "Mods/$ModName/Levels/$($wp.level)/Decals/$($wp.decal.guid).lsf",
+        "Mods/$ModName/Levels/$($wp.level)/Scenery/$($wp.rock.guid).lsf"
 }
 foreach ($file in $required) {
     if (-not ($listing -contains $file)) { Fail "Package is missing $file" }

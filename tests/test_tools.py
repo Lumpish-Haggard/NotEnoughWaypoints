@@ -15,11 +15,22 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import build_waypoints  # noqa: E402
 from navgrid import cell_centre, lz4_block  # noqa: E402
-from waypoints import DATA_FILE, decal_transform, facing_yaw, front, load, problems, quat_yaw, rotate, shrine_yaw  # noqa: E402
+from waypoints import (DATA_FILE, ROCK_SCALE, ROCK_TEMPLATES, decal_transform, facing_yaw, front, load,  # noqa: E402
+                       problems, quat_yaw, rock_transform, rotate, shrine_yaw)
 
 
 def close(a, b, places=4):
     return all(abs(x - y) < 10 ** -places for x, y in zip(a, b))
+
+
+def same_rotation(a, b, places=4):
+    return close(a, b, places) or close(a, tuple(-v for v in b), places)
+
+
+# The game's own Blighted Village waypoint (WLD_Main_A), which every waypoint of this mod copies.
+FOR_SHRINE = ((33.663925, 31.565928, 392.15353), (0, 0.9998932, 0, -0.014615281))
+FOR_ROCK = ((33.475048, 32.575485, 391.56042), (0.702719, -0.6543975, 0.20599847, 0.18845336))
+FOR_DECAL = ((33.649197, 33.076702, 391.98032), (0.019167274, 0.70684683, 0.7068471, -0.019167226))
 
 
 class Geometry(unittest.TestCase):
@@ -27,17 +38,23 @@ class Geometry(unittest.TestCase):
         # S_UND_Fort_WaypointShrine is turned 90 degrees: (0, 0.70711, 0, 0.70711) in the game files.
         self.assertTrue(close(quat_yaw(90), (0, math.sqrt(0.5), 0, math.sqrt(0.5))))
 
-    def test_decal_matches_the_games_own(self):
-        # The game's decal on that shrine: rotation (-0.5, 0.5, 0.5, 0.5).
-        position, rotation = decal_transform((180.416, 59.523, -234.977), 90)
-        self.assertTrue(close(rotation, (-0.5, 0.5, 0.5, 0.5)))
-        self.assertTrue(close(position, (180.416, 61.023, -234.977), 3))
+    def test_blighted_village_is_reproduced(self):
+        # From the game's shrine alone, the arrangement must give back the game's boulder and rune.
+        position, rotation = FOR_SHRINE
+        yaw = math.degrees(2 * math.atan2(rotation[1], rotation[3]))
+        rock_pos, rock_rot = rock_transform(position, yaw)
+        decal_pos, decal_rot = decal_transform(position, yaw)
+        self.assertTrue(close(rock_pos, FOR_ROCK[0], 2), rock_pos)
+        self.assertTrue(same_rotation(rock_rot, FOR_ROCK[1], 3), rock_rot)
+        self.assertTrue(close(decal_pos, FOR_DECAL[0], 2), decal_pos)
+        self.assertTrue(same_rotation(decal_rot, FOR_DECAL[1], 3), decal_rot)
 
-    def test_decal_matches_moonrise_exterior(self):
-        # S_MOO_TowerExterior_WaypointShrine (0, -0.707106, 0, 0.70710754) carries a decal turned (0.5, 0.5, 0.5, -0.5),
-        # which is the same rotation as (-0.5, -0.5, -0.5, 0.5).
-        _, rotation = decal_transform((0, 0, 0), -90)
-        self.assertTrue(close(rotation, (-0.5, -0.5, -0.5, 0.5)) or close(rotation, (0.5, 0.5, 0.5, -0.5)))
+    def test_arrangement_turns_with_the_shrine(self):
+        # Turning the shrine turns the boulder around it: the boulder stays behind the shrine.
+        for yaw in (0, 45, 90, 180, -135):
+            rock_pos, _ = rock_transform((0, 0, 0), yaw)
+            fx, fz = front(yaw)
+            self.assertLess(fx * rock_pos[0] + fz * rock_pos[2], -0.5)  # behind = against the front direction
 
     def test_rune_face_looks_at_the_arrival_point(self):
         for trigger in ((2, 0, 0), (-2, 0, 0), (0, 0, 2), (0, 0, -2), (1.5, 0, 1.5)):
@@ -114,6 +131,17 @@ class Generated(unittest.TestCase):
             s, t = wp["shrine"]["position"], wp["trigger"]["position"]
             d = math.hypot(t[0] - s[0], t[2] - s[2])
             self.assertGreater((fx * (t[0] - s[0]) + fz * (t[2] - s[2])) / d, 0.99, wp["id"])
+
+    def test_every_waypoint_has_its_boulder_and_rune(self):
+        files = build_waypoints.all_files(self.waypoints)
+        for wp in self.waypoints:
+            rock = [t for p, t in files.items() if wp["rock"]["guid"] in p and os.sep + "Scenery" + os.sep in p]
+            decal = [t for p, t in files.items() if wp["decal"]["guid"] in p and os.sep + "Decals" + os.sep in p]
+            self.assertEqual(len(rock), 1, wp["id"])
+            self.assertIn('value="%s"' % ROCK_TEMPLATES[wp["rock"]["style"]], rock[0])
+            self.assertIn('id="Scale" type="float" value="%s"' % ROCK_SCALE, rock[0])
+            self.assertIn('id="Type" type="FixedString" value="scenery"', rock[0])
+            self.assertIn('id="Dimensions" type="fvec3" value="3 0.6 3"', decal[0])
 
     def test_names_file(self):
         xml = build_waypoints.english(self.waypoints)

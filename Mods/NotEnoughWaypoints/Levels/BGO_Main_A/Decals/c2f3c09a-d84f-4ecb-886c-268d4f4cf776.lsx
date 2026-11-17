@@ -5,6 +5,7 @@
 		<node id="Templates">
 			<children>
 				<node id="GameObjects">
+					<attribute id="Dimensions" type="fvec3" value="3 0.6 3" />
 					<attribute id="Flag" type="int32" value="1" />
 					<attribute id="LevelName" type="FixedString" value="BGO_Main_A" />
 					<attribute id="MapKey" type="FixedString" value="c2f3c09a-d84f-4ecb-886c-268d4f4cf776" />
@@ -24,8 +25,8 @@
 							</children>
 						</node>
 						<node id="Transform">
-							<attribute id="Position" type="fvec3" value="-21.75 46.963 -12.25" />
-							<attribute id="RotationQuat" type="fvec4" value="-0.5 0.5 0.5 0.5" />
+							<attribute id="Position" type="fvec3" value="-24.397 47.05 -13.117" />
+							<attribute id="RotationQuat" type="fvec4" value="-0.2624155 0.6566106 0.6566115 0.2624152" />
 							<attribute id="Scale" type="float" value="1" />
 						</node>
 					</children>

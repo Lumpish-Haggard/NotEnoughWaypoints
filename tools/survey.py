@@ -2,7 +2,7 @@
 survey.py - look at a level the way the waypoint checks see it, and find room for a waypoint.
 
     python tools/survey.py find <level> <regex>               # placed objects by name (NPCs, doors, shrines)
-    python tools/survey.py map <level> <x> <y> <z> [--size 30] [--scale 0.5]
+    python tools/survey.py map <level> <x> <y> <z> [--size 30] [--scale 0.5] [--try <shrine x> <z> <arrival x> <z>]
     python tools/survey.py spots <level> <x> <y> <z> [--radius 12] [--count 8]
     python tools/survey.py check <level> <shrine x> <z> <arrival x> <z> [--y 30]   # one placement, heights from the floor
 
@@ -12,14 +12,15 @@ Needs the cache from extract_game_data.py (with that level in it).
   .  free floor within 0.6 m of that height      ,  floor covered by something (walls, furniture)
   +  free floor 0.6 to 2 m higher or lower        #  nothing to stand on near that height
   C  character   i  item   s  prop   D  door   W  waypoint shrine   @  the point
+  R  this mod's boulders (waypoints.json, and --try)   A  their arrival points
 Objects are drawn when they are within 1.5 m of that height; characters, doors and
 shrines are listed under the map.
 
-`spots` tries arrival points on free floor around the point and, for each, a shrine
-2 m away in 16 directions. Every result passes the same checks as build_waypoints.py.
-It prefers a shrine with its back to a wall, room around the arrival point, and a
-spot close to the point given. Each result is printed as a waypoints.json entry with
-fresh GUIDs, ready to paste.
+`spots` tries arrival points on free floor around the point and, for each, a waypoint
+(shrine, boulder and rune) 1.75 m away in 16 directions. Every result passes the same
+checks as build_waypoints.py. It prefers a boulder with a wall or cliff behind it, room
+around the arrival point, and a spot close to the point given. Each result is printed
+as a waypoints.json entry with fresh GUIDs, ready to paste.
 """
 from __future__ import annotations
 
@@ -33,8 +34,8 @@ import uuid
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from navgrid import CELL, cell_centre  # noqa: E402
-from waypoints import (GROUP_OF_LEVEL, SHRINE_TEMPLATE, SINK, Level, check_placement, facing_yaw,  # noqa: E402
-                       footprint, front)
+from waypoints import (DATA_FILE, GROUP_OF_LEVEL, ROCK_FOOTPRINT, SHRINE_ABOVE_FLOOR, SHRINE_TEMPLATE, Level,  # noqa: E402
+                       area, check_placement, facing_yaw, load, rock_base, shrine_yaw)
 
 
 def need(level: str) -> Level:
@@ -94,6 +95,24 @@ def cmd_map(args):
         if ch in "CDW":
             listed.append((r, c, ch, o))
     rows[size][size] = "@"
+
+    def mark(x, z, ch):
+        c = round((x - x0) / scale) + size
+        r = size - round((z - z0) / scale)
+        if 0 <= c <= 2 * size and 0 <= r <= 2 * size:
+            rows[r][c] = ch
+
+    # The waypoints of waypoints.json in this level, and a proposed one (--try): boulder R, shrine W, arrival A.
+    shown = [wp for wp in load(DATA_FILE)["waypoints"] if wp["level"] == args.level]
+    if args.try_:
+        sx, sz, tx, tz = args.try_
+        shown.append({"shrine": {"position": [sx, h0, sz]}, "trigger": {"position": [tx, h0, tz]}})
+    for wp in shown:
+        yaw = shrine_yaw(wp)
+        for x, z in area(wp["shrine"]["position"], yaw, ROCK_FOOTPRINT, min(scale, 0.25)):
+            mark(x, z, "R")
+        mark(wp["shrine"]["position"][0], wp["shrine"]["position"][2], "W")
+        mark(wp["trigger"]["position"][0], wp["trigger"]["position"][2], "A")
     print("%s around (%.2f, %.2f, %.2f), floor height %.2f, %.2f m per character" % (args.level, x0, y0, z0, h0, scale))
     for row in rows:
         print("  " + "".join(row))
@@ -101,18 +120,31 @@ def cmd_map(args):
         print("  %s  %-48s %9.2f %8.2f %9.2f" % (ch, o["name"][:48], *o["pos"]))
 
 
+ARRIVAL_DISTANCE = 1.75   # the Blighted Village waypoint's arrival point is 1.56 m in front of its shrine
+
+
+def shrine_height(lv: Level, sx, sz, yaw, floor):
+    """Height for the shrine so that the boulder meets the floor in front, or None if there is no floor there."""
+    base = rock_base(lv, (sx, floor, sz), yaw, floor)
+    return None if base is None else round(base + SHRINE_ABOVE_FLOOR, 3)
+
+
 def back_to_wall(lv: Level, shrine, yaw, floor) -> int:
-    """How many points 0.75 to 1.75 m behind the shrine have no floor at its height (a wall or a drop)."""
-    fx, fz = front(yaw)
-    sx, sz = -fz, fx
+    """How many points just behind the boulder have no floor at its height (a wall, a cliff or a drop)."""
     hits = 0
-    for back in (0.75, 1.25, 1.75):
-        for side in (-1.0, 0.0, 1.0):
-            x = shrine[0] - fx * back + sx * side
-            z = shrine[2] - fz * back + sz * side
-            if lv.floor(x, z, floor, 0.6) is None:
-                hits += 1
+    for x, z in area(shrine, yaw, (-1.0, 1.0, 2.75, 3.75), 0.5):
+        if lv.floor(x, z, floor, 0.6) is None:
+            hits += 1
     return hits
+
+
+def candidate(lv: Level, sx, sz, tx, tz, floor):
+    yaw = facing_yaw((sx, 0, sz), (tx, 0, tz))
+    height = shrine_height(lv, sx, sz, yaw, floor)
+    if height is None:
+        return None, yaw
+    return {"id": "candidate", "shrine": {"position": [round(sx, 3), height, round(sz, 3)]},
+            "trigger": {"position": [round(tx, 3), round(floor, 3), round(tz, 3)]}}, yaw
 
 
 def cmd_spots(args):
@@ -136,14 +168,9 @@ def cmd_spots(args):
             best = None
             for k in range(16):
                 a = 2 * math.pi * k / 16
-                sx, sz = tx + 2.0 * math.cos(a), tz + 2.0 * math.sin(a)
-                yaw = facing_yaw((sx, 0, sz), (tx, 0, tz))
-                heights = [lv.floor(px, pz, floor, 0.5) for px, pz in footprint((sx, floor, sz), yaw)]
-                if any(h is None for h in heights):
+                wp, yaw = candidate(lv, tx + ARRIVAL_DISTANCE * math.cos(a), tz + ARRIVAL_DISTANCE * math.sin(a), tx, tz, floor)
+                if wp is None:
                     continue
-                base = round(min(heights) - SINK, 3)
-                wp = {"id": "candidate", "shrine": {"position": [round(sx, 3), base, round(sz, 3)]},
-                      "trigger": {"position": [tx, round(floor, 3), tz]}}
                 errors, warnings = check_placement(lv, wp)
                 if errors:
                     continue
@@ -163,17 +190,19 @@ def cmd_spots(args):
     print("%d places pass every check within %.0f m of (%.2f, %.2f, %.2f) in %s; best %d:" % (
         len(found), args.radius, x0, y0, z0, args.level, len(picked)))
     for score, dist, wp, warnings in picked:
-        s, t = wp["shrine"]["position"], wp["trigger"]["position"]
-        print("\n  score %.1f, %.1f m from the point%s" % (score, dist, ("; " + "; ".join(warnings)) if warnings else ""))
+        print()
+        print("  score %.1f, %.1f m from the point%s" % (score, dist, ("; " + "; ".join(warnings)) if warnings else ""))
         entry = {
-            "shrine": {"guid": str(uuid.uuid4()), "position": s},
-            "trigger": {"guid": str(uuid.uuid4()), "position": t},
+            "shrine": {"guid": str(uuid.uuid4()), "position": wp["shrine"]["position"]},
+            "trigger": {"guid": str(uuid.uuid4()), "position": wp["trigger"]["position"]},
             "decal": {"guid": str(uuid.uuid4()), "style": "dark"},
+            "rock": {"guid": str(uuid.uuid4()), "style": "grey"},
         }
         print("  " + json.dumps(entry))
     if picked:
         h = uuid.uuid4().hex
-        print("\n  a fresh name handle: h%sg%sg%sg%sg%s; group for %s: %s" % (
+        print()
+        print("  a fresh name handle: h%sg%sg%sg%sg%s; group for %s: %s" % (
             h[:8], h[8:12], h[12:16], h[16:20], h[20:], args.level, GROUP_OF_LEVEL.get(args.level, "?")))
 
 
@@ -182,17 +211,16 @@ def cmd_check(args):
     floor = lv.floor(args.tx, args.tz, args.y, 3.0)
     if floor is None:
         sys.exit("No free floor at the arrival point near height %.2f" % args.y)
-    yaw = facing_yaw((args.sx, 0, args.sz), (args.tx, 0, args.tz))
-    heights = [lv.floor(px, pz, floor, 0.5) for px, pz in footprint((args.sx, floor, args.sz), yaw)]
-    base = round(min(h for h in heights if h is not None) - SINK, 3) if any(h is not None for h in heights) else floor
-    wp = {"id": "placement", "shrine": {"position": [round(args.sx, 3), base, round(args.sz, 3)]},
-          "trigger": {"position": [round(args.tx, 3), round(floor, 3), round(args.tz, 3)]}}
+    wp, yaw = candidate(lv, args.sx, args.sz, args.tx, args.tz, floor)
+    if wp is None:
+        print("ERROR  the boulder has no flat free floor to rest on there")
+        return 1
     errors, warnings = check_placement(lv, wp)
     for e in errors:
         print("ERROR  " + e)
     for w in warnings:
         print("WARN   " + w)
-    print("shrine yaw %.2f, back to a wall: %d of 9" % (yaw, back_to_wall(lv, wp["shrine"]["position"], yaw, floor)))
+    print("shrine yaw %.2f, boulder backed by a wall: %d of 15" % (yaw, back_to_wall(lv, wp["shrine"]["position"], yaw, floor)))
     print(json.dumps({"shrine": {"position": wp["shrine"]["position"]}, "trigger": {"position": wp["trigger"]["position"]}}))
     return 1 if errors else 0
 
@@ -214,6 +242,8 @@ def main():
         if name == "map":
             p.add_argument("--size", type=int, default=30, help="characters from the centre to the edge")
             p.add_argument("--scale", type=float, default=0.5, help="metres per character")
+            p.add_argument("--try", dest="try_", type=float, nargs=4, metavar=("SX", "SZ", "AX", "AZ"),
+                           help="also draw a proposed waypoint: shrine x z, arrival x z")
         else:
             p.add_argument("--radius", type=float, default=12.0)
             p.add_argument("--count", type=int, default=8)

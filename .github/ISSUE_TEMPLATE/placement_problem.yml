@@ -1,12 +1,12 @@
 name: Placement problem
-description: A shrine floats, sinks into the floor, clips through something, blocks a path, or you arrive somewhere awkward.
+description: A waypoint floats, sinks into the floor, clips through something, blocks a path, or you arrive somewhere awkward.
 title: "[Placement] "
 labels: ["placement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Every shrine was placed with the game's own navigation data, but only the game shows what it really looks like. A screenshot helps most.
+        Every waypoint was placed with the game's own navigation data, but only the game shows what it really looks like. A screenshot helps most.
 
   - type: dropdown
     id: waypoint
@@ -26,7 +26,7 @@ body:
     id: problem
     attributes:
       label: What is wrong?
-      description: For example "the shrine stands in the doorway" or "the party arrives half inside a wall".
+      description: For example "the boulder stands in the doorway", "the rune is not on the boulder" or "the party arrives half inside a wall".
     validations:
       required: true
 

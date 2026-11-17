@@ -5,6 +5,7 @@
 		<node id="Templates">
 			<children>
 				<node id="GameObjects">
+					<attribute id="Dimensions" type="fvec3" value="3 0.6 3" />
 					<attribute id="Flag" type="int32" value="1" />
 					<attribute id="LevelName" type="FixedString" value="WLD_Main_A" />
 					<attribute id="MapKey" type="FixedString" value="7db90cb4-db44-431b-93df-0e638ceee428" />
@@ -24,8 +25,8 @@
 							</children>
 						</node>
 						<node id="Transform">
-							<attribute id="Position" type="fvec3" value="-18.75 33.451 -287.75" />
-							<attribute id="RotationQuat" type="fvec4" value="0 -0.7071068 -0.7071068 0" />
+							<attribute id="Position" type="fvec3" value="-19.76 33.538 -294.674" />
+							<attribute id="RotationQuat" type="fvec4" value="-0.008834 -0.707051 -0.707052 0.008834" />
 							<attribute id="Scale" type="float" value="1" />
 						</node>
 					</children>

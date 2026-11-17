@@ -6,9 +6,10 @@ The game builds every waypoint from the same pieces, and this mod uses the same 
 
 | Piece | What it is | Where it lives |
 |---|---|---|
-| Shrine | An item made from the game's waypoint template (`Helper_Waypoint_A`, `2dab7df1-...`). Its behaviour script unlocks the waypoint when a player comes within 18 m and can see it. | `Globals/<level>/Items/` (global: the story refers to it from anywhere) |
+| Shrine | An **invisible** item made from the game's waypoint template (`Helper_Waypoint_A`, `2dab7df1-...`): what players use. Its behaviour script unlocks the waypoint when a player comes within 18 m and can see it. | `Globals/<level>/Items/` (global: the story refers to it from anywhere) |
+| Rock | What players see: an ordinary rock or cliff piece next to the shrine. The game has no waypoint model; every waypoint's rock is placed by hand. | `Levels/<level>/Scenery/` |
+| Rune | A decal (`DCL_Waypoint_Dark_A` or `DCL_Waypoint_Light_A`) projected onto the rock's face. | `Levels/<level>/Decals/` |
 | Arrival point | A teleport trigger (`TeleportTrigger`, `f7bd7465-...`) on the floor in front of the shrine. Travelling puts the party there. | `Globals/<level>/Triggers/` |
-| Rune | A decal (`DCL_Waypoint_Dark_A` or `DCL_Waypoint_Light_A`) projected onto the shrine's face. | `Levels/<level>/Decals/` |
 | Story fact | `DB_WaypointInfo(group, id, shrine, arrival point)` | a story goal |
 | Name | A translated-string key named after the waypoint id, pointing at the name's localisation handle | `Mods/<mod>/Localization/*.lsf` and `Localization/<Language>/*.loca` |
 
@@ -16,7 +17,11 @@ The game's story script `_Waypoints` (in the Shared module) does everything else
 
 ## What the mod adds
 
-- One shrine, arrival point and rune per waypoint, generated from `waypoints.json` (see below).
+- One shrine, rock, rune and arrival point per waypoint, generated from `waypoints.json`.
+
+  All six copy one of the game's waypoints exactly: the Blighted Village (`S_FOR_WaypointShrine` in `WLD_Main_A`). Its shrine is upright, its rock is a boulder (`NAT_Rock_Boulder_B` at 1.2 scale) standing on flat ground, and its rune lies on the boulder's face, so the same arrangement fits on any flat floor. `tools/waypoints.py` keeps the boulder's and the rune's position and rotation relative to the shrine, as measured in the game files; the generator turns the whole arrangement to face each arrival point. The boulder comes in several colours that share one mesh (grey, wet grey, brown, mossy), so any colour fits the same arrangement. The decal keeps the depth the game gives it there (`Dimensions` 3 0.6 3), so that it marks the boulder and not the floor in front of it. A test feeds the game's own shrine into the arrangement and checks that it gives back the game's own boulder and rune.
+
+  The rune on its own, without a rock, has nothing to land on and smears across the floor: that is what the first test build showed.
 - One story goal, `NotEnoughWaypoints.txt`:
   - its INIT section adds a `DB_WaypointInfo` fact per waypoint, and the Arcane Tower to the game's list of Underdark waypoints (`DB_UND_BroodingSpovereign_UnderdarkWaypoints`), so that Sovereign Glut follows the party there;
   - a rule registers the waypoints once more when gameplay first starts (see *Existing saves*);
@@ -33,7 +38,7 @@ Starting first has one catch: the goal may start before the game's `_Waypoints` 
 
 ## Placement
 
-A waypoint is only as good as where it stands. The checks in `tools/waypoints.py` are measured on the game's own 38 waypoints, and run against two kinds of game data that `tools/extract_game_data.py` reads from your installation:
+A waypoint is only as good as where it stands. The checks in `tools/waypoints.py` run against two kinds of game data that `tools/extract_game_data.py` reads from your installation:
 
 - **The navigation grid** (`Levels/<level>/Ai/aigrid.data`), read by `tools/navgrid.py`. It covers each level in 0.5 m cells and stores, per cell, the height of every walkable surface and whether something stands on it. Tiles overlap where a place has several floors (the storeys of a tower, a bridge over a road).
 - **The placed objects** of the level: characters, items, props and triggers, with their positions.
@@ -44,16 +49,15 @@ For every waypoint `tools/build_waypoints.py` checks:
 |---|---|
 | Free floor under the arrival point, within 15 cm of its height | the party lands on the floor, not in it or above it |
 | The 25 cells within 1 m of the arrival point are all free | room for the whole party |
-| Free floor under the whole shrine (2.4 m by 0.25 m), varying by at most 30 cm, and the shrine base at most 20 cm under the lowest point | it stands on the floor: not floating, not on a step edge, not over a drop |
-| No other floor up to 3.3 m above the shrine or the arrival point | no balcony or upper storey cutting through it |
-| Walkable floor all the way between the arrival point and the shrine | no wall in between |
-| No character, item or prop of the game's within 2.2 m of the shrine or 1.5 m of the arrival point | nothing clips into it, and it blocks no one |
-| A warning for a story point (where scripts send characters) under the shrine | it would stand in their way |
+| The shrine at the floor where the boulder's front meets it | the boulder sits into the floor as deep as at the Blighted Village (0.7 m) |
+| Free floor under the boulder's whole footprint (3 m by 2 m, measured on its mesh), never more than 25 cm lower than its front and at most 1 m higher | it may sit into a rise behind it, as the game's rocks do on slopes, but never floats over a drop |
+| Where the boulder or the party stands on a floor, no second floor up to 3.5 m above it | no balcony or upper storey cutting through it |
+| Walkable floor all the way between the arrival point and the boulder | no wall in between |
+| No character, item or prop of the game's within 0.75 m of the boulder's outline, or 1.5 m of the arrival point | nothing clips into it, and it blocks no one |
+| A warning for a story point (where scripts send characters) under the boulder | it would stand in their way |
 | No clash with the game's waypoint ids, names or object GUIDs | the map list stays readable; nothing is overwritten |
 
-The shrine faces its arrival point, and the rune is placed the way the game places it: 1.5 m up the shrine, turned -90 degrees about the shrine's width so that it lies on its face. The tests compare this with the game's own shrines.
-
-What the checks cannot see: decoration that is not in the navigation grid or the object lists, light, and how the spot looks. That is what testing in game is for.
+What the checks cannot see: walkways (a boulder can pass every check and still half-block a door or a path), walls and decoration that are not in the navigation grid or the object lists, light, and how the spot looks. `tools/survey.py map ... --try` draws a proposed boulder on the floor plan to judge the first; testing in game covers the rest.
 
 ## Building
 

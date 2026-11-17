@@ -4,10 +4,18 @@ waypoints.py - the waypoint list (waypoints.json), its geometry and its checks.
 Shared by build_waypoints.py (generates the mod files, checks the list) and
 survey.py (finds good places for new waypoints).
 
-A waypoint is built the way the game builds its own (measured on all 38 of them):
-  * the shrine stands upright, its rune face towards the arrival point;
-  * the arrival point is a teleport trigger on free floor in front of it, about 2 m away;
-  * the rune is a decal 1.5 m up the shrine, turned to lie flat on its face.
+What a waypoint looks like in the game
+  The game's waypoint "shrine" (Helper_Waypoint_A) is an invisible object: it is what
+  players use and what unlocks the waypoint. What they see is a rock next to it, with
+  the rune (a decal) projected onto the rock's face. Larian builds each one by hand.
+
+  This mod copies one of them exactly: the Blighted Village waypoint (S_FOR_WaypointShrine).
+  It stands on flat ground and is upright, so the same arrangement fits on any flat floor:
+    * the invisible shrine, turned so that its front (local -z) faces the arrival point;
+    * the boulder (NAT_Rock_Boulder_B at 1.2 scale), from the shrine's plane to 2.3 m behind it;
+    * the rune, 1.5 m up, just inside the boulder's face;
+    * the arrival point, a teleport trigger on free floor in front, about 2 m away.
+  The boulder comes in several colours that share one mesh, so any of them fits.
 """
 from __future__ import annotations
 
@@ -16,22 +24,47 @@ import math
 import os
 import re
 
-from navgrid import BLOCKED, CELL, NavGrid
+from navgrid import CELL, NavGrid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOD = "NotEnoughWaypoints"
 DATA_FILE = os.path.join(ROOT, "waypoints.json")
 CACHE = os.path.join(ROOT, "tools", ".cache")
 
-SHRINE_TEMPLATE = "2dab7df1-7914-4748-b329-b4fe8b60fcc9"   # Helper_Waypoint_A, the game's waypoint shrine
-TRIGGER_TEMPLATE = "f7bd7465-b0ec-45b3-81f6-6f01d6c68c48"  # TeleportTrigger, the arrival point
+SHRINE_TEMPLATE = "2dab7df1-7914-4748-b329-b4fe8b60fcc9"   # Helper_Waypoint_A: the invisible waypoint object
+TRIGGER_TEMPLATE = "f7bd7465-b0ec-45b3-81f6-6f01d6c68c48"  # TeleportTrigger: the arrival point
 POINT_TRIGGER_TEMPLATE = "15111ce4-12fc-4757-bb81-7c2c212e141a"  # PointTrigger: where scripts send characters
 DECAL_TEMPLATES = {
     "dark": "4aa6eeee-3d1b-45fc-8397-ad149db8c581",   # DCL_Waypoint_Dark_A (Acts 1 and 2, underground)
     "light": "fe811f3b-9c1e-43be-ba99-58628f614584",  # DCL_Waypoint_Light_A (Baldur's Gate streets)
 }
-DECAL_HEIGHT = 1.5                                   # metres up the shrine
-DECAL_TILT = (-math.sqrt(0.5), 0.0, 0.0, math.sqrt(0.5))  # -90 degrees about the shrine's x axis
+ROCK_TEMPLATES = {                                    # all NAT_Rock_Boulder_B.GR2, different materials
+    "grey": "99179bdb-43f3-4fa4-a40e-46c2101d3426",       # NAT_Rock_Boulder_B_Grey
+    "grey_wet": "2a42f82d-2f63-4ffd-b7a7-cd31b31abb40",   # NAT_Rock_Boulder_B_Grey_Wet
+    "grey_moss": "64e75246-41fb-4759-8e16-43b3e8a20c7b",  # NAT_Rock_Boulder_B_Grey_Moss (the Blighted Village one)
+    "brown": "65f0089c-75c2-4ab3-a738-52fc782f0185",      # NAT_Rock_Boulder_B_Brown
+    "brown_moss": "a11cf629-3d5d-4526-a19c-1e7b6378ee11",  # NAT_Rock_Boulder_B_Brown_Moss
+}
+
+# The Blighted Village arrangement, relative to the invisible shrine (x across, y up, z behind;
+# the arrival point lies on the -z side). Measured from the game files: S_FOR_WaypointShrine,
+# S_FOR_WaypointShrine_geo and S_FOR_WaypointShrine_DCL in WLD_Main_A.
+SHRINE_ABOVE_FLOOR = 0.026
+ROCK_OFFSET = (0.1715, 1.0096, 0.5984)
+ROCK_ROTATION = (0.216247, 0.178869, -0.699633, 0.657082)
+ROCK_SCALE = 1.2
+DECAL_OFFSET = (0.0097, 1.5108, 0.1736)
+DECAL_ROTATION = (-0.707052, 0.008834, 0.008834, 0.707051)
+DECAL_DIMENSIONS = (3.0, 0.6, 3.0)   # the game's instance makes the decal shallower than its template (3 1 3)
+
+# The boulder in that arrangement, measured on its mesh (shrine frame, metres):
+ROCK_FOOTPRINT = (-1.5, 1.5, 0.0, 2.05)    # x from, x to, z from, z to: where it rests on the floor
+ROCK_BODY = (-1.55, 1.75, -0.1, 2.35)      # x from, x to, z from, z to: everything above the floor
+ROCK_HEIGHT = 3.2                          # top, above the shrine
+ROCK_DEPTH = 0.71                          # bottom, below the shrine (it is set this far into the floor)
+ROCK_FRONT = (-1.5, 1.5, 0.0, 0.5)         # the strip where the boulder meets the floor in front
+FLOOR_DROP = 0.25                          # floor under the boulder may be this much lower than its front...
+FLOOR_RISE = 1.0                           # ...and this much higher (it then sits in a rise, like the game's rocks)
 
 # The story groups waypoints by act; the game locks a whole group when the story leaves it.
 GROUP_OF_LEVEL = {
@@ -42,15 +75,10 @@ GROUP_OF_LEVEL = {
     "CTY_Main_A": "Act3b",
 }
 
-# Shrine footprint (from the template's bounds: 2.4 m wide, 0.25 m deep, 3 m tall).
-SHRINE_HALF_WIDTH = 1.2
-SHRINE_HALF_DEPTH = 0.125
-SHRINE_HEIGHT = 3.0
-SINK = 0.05  # the shrine is set this far into the floor, so no gap shows under it
-
 RE_ID = re.compile(r"^NEW_WAYP_[A-Z]{3}_[A-Za-z0-9]+$")
 RE_GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 RE_HANDLE = re.compile(r"^h[0-9a-f]{8}g[0-9a-f]{4}g[0-9a-f]{4}g[0-9a-f]{4}g[0-9a-f]{12}$")
+PARTS = ("shrine", "trigger", "decal", "rock")
 
 
 # ----------------------------------------------------------------------- geometry
@@ -81,8 +109,13 @@ def rotate(q, v):
             vz + w * tz + (x * ty - y * tx))
 
 
+def canonical(q):
+    """The same rotation with w >= 0, as the game files write it."""
+    return tuple(-v for v in q) if q[3] < 0 else tuple(q)
+
+
 def facing_yaw(shrine, trigger) -> float:
-    """Yaw that turns the shrine's rune face (its local -z side) towards the arrival point."""
+    """Yaw that turns the shrine's front (its local -z side) towards the arrival point."""
     dx, dz = trigger[0] - shrine[0], trigger[2] - shrine[2]
     return round(math.degrees(math.atan2(-dx, -dz)), 2)
 
@@ -92,17 +125,46 @@ def shrine_yaw(wp) -> float:
     return float(s["yaw"]) if "yaw" in s else facing_yaw(s["position"], wp["trigger"]["position"])
 
 
-def decal_transform(shrine_position, yaw: float):
+def place(shrine_position, yaw, offset, rotation=None):
+    """World position (and rotation) of a part given in the shrine's frame."""
     q = quat_yaw(yaw)
-    up = rotate(q, (0.0, DECAL_HEIGHT, 0.0))
-    position = tuple(p + u for p, u in zip(shrine_position, up))
-    return position, quat_mul(q, DECAL_TILT)
+    d = rotate(q, offset)
+    position = tuple(p + o for p, o in zip(shrine_position, d))
+    return position, (canonical(quat_mul(q, rotation)) if rotation else None)
+
+
+def decal_transform(shrine_position, yaw: float):
+    return place(shrine_position, yaw, DECAL_OFFSET, DECAL_ROTATION)
+
+
+def rock_transform(shrine_position, yaw: float):
+    return place(shrine_position, yaw, ROCK_OFFSET, ROCK_ROTATION)
 
 
 def front(yaw: float):
-    """Unit x/z vector of the rune face."""
+    """Unit x/z vector the shrine's front faces."""
     r = math.radians(yaw)
     return (-math.sin(r), -math.cos(r))
+
+
+def to_world(shrine_position, yaw, x, z):
+    """x/z of a point given in the shrine's frame (x across, z behind)."""
+    p = rotate(quat_yaw(yaw), (x, 0.0, z))
+    return shrine_position[0] + p[0], shrine_position[2] + p[2]
+
+
+def area(shrine_position, yaw, box, step=0.25):
+    """World x/z sample points of a rectangle given in the shrine's frame."""
+    x0, x1, z0, z1 = box
+    points = []
+    x = x0
+    while x <= x1 + 1e-6:
+        z = z0
+        while z <= z1 + 1e-6:
+            points.append(to_world(shrine_position, yaw, x, z))
+            z += step
+        x += step
+    return points
 
 
 def num(v: float, places: int = 6) -> str:
@@ -120,7 +182,7 @@ def load(path: str = DATA_FILE) -> dict:
 
 
 def object_names(wp) -> dict:
-    return {"shrine": "S_%s_Shrine" % wp["id"], "trigger": "S_%s_Trigger" % wp["id"], "decal": "S_%s_Decal" % wp["id"]}
+    return {part: "S_%s_%s" % (wp["id"], part.capitalize()) for part in PARTS}
 
 
 def problems(data: dict) -> list[str]:
@@ -154,7 +216,7 @@ def problems(data: dict) -> list[str]:
             out.append("%s: handle used twice" % where)
         seen_handles.add(handle)
         positions = 0
-        for part in ("shrine", "trigger", "decal"):
+        for part in PARTS:
             obj = wp.get(part)
             if not isinstance(obj, dict):
                 out.append("%s: missing '%s'" % (where, part))
@@ -165,7 +227,7 @@ def problems(data: dict) -> list[str]:
             if guid in seen_guids:
                 out.append("%s: %s.guid used twice" % (where, part))
             seen_guids.add(guid)
-            if part != "decal":
+            if part in ("shrine", "trigger"):
                 pos = obj.get("position")
                 if isinstance(pos, list) and len(pos) == 3 and all(isinstance(v, (int, float)) for v in pos):
                     positions += 1
@@ -173,6 +235,8 @@ def problems(data: dict) -> list[str]:
                     out.append("%s: %s.position must be [x, y, z]" % (where, part))
         if wp.get("decal", {}).get("style") not in DECAL_TEMPLATES:
             out.append("%s: decal.style must be one of %s" % (where, ", ".join(DECAL_TEMPLATES)))
+        if wp.get("rock", {}).get("style") not in ROCK_TEMPLATES:
+            out.append("%s: rock.style must be one of %s" % (where, ", ".join(ROCK_TEMPLATES)))
         if "yaw" in wp.get("shrine", {}) and not isinstance(wp["shrine"]["yaw"], (int, float)):
             out.append("%s: shrine.yaw must be a number of degrees" % where)
         if wp.get("underdark") and group != "Act1":
@@ -214,6 +278,19 @@ class Level:
         return [o for o in objects
                 if abs(o["pos"][1] - y) <= height and math.hypot(o["pos"][0] - x, o["pos"][2] - z) <= radius]
 
+    def inside(self, objects, shrine, yaw, box, margin, height=(-1.0, ROCK_HEIGHT)):
+        """Objects within `margin` of a rectangle given in the shrine's frame, between the given heights."""
+        q = quat_yaw(-yaw)
+        found = []
+        for o in objects:
+            dy = o["pos"][1] - shrine[1]
+            if not height[0] <= dy <= height[1]:
+                continue
+            x, _, z = rotate(q, (o["pos"][0] - shrine[0], 0.0, o["pos"][2] - shrine[2]))
+            if box[0] - margin <= x <= box[1] + margin and box[2] - margin <= z <= box[3] + margin:
+                found.append(o)
+        return found
+
 
 def vanilla_waypoints(cache: str = CACHE) -> list[dict]:
     path = os.path.join(cache, "vanilla_waypoints.json")
@@ -225,21 +302,11 @@ def vanilla_waypoints(cache: str = CACHE) -> list[dict]:
 
 # ------------------------------------------------------------------ placement checks
 
-def footprint(position, yaw, margin=0.0, step=0.25):
-    """Sample points under the shrine (and `margin` metres around it)."""
-    fx, fz = front(yaw)
-    sx, sz = -fz, fx  # along the shrine's width
-    half_w = SHRINE_HALF_WIDTH + margin
-    half_d = SHRINE_HALF_DEPTH + margin
-    points = []
-    u = -half_w
-    while u <= half_w + 1e-6:
-        v = -half_d
-        while v <= half_d + 1e-6:
-            points.append((position[0] + sx * u + fx * v, position[2] + sz * u + fz * v))
-            v += step
-        u += step
-    return points
+def rock_base(level: Level, shrine, yaw, near):
+    """The floor where the boulder meets it in front: the lowest free floor along its front edge."""
+    heights = [level.floor(x, z, near, 0.6) for x, z in area(shrine, yaw, ROCK_FRONT)]
+    heights = [h for h in heights if h is not None]
+    return min(heights) if heights else None
 
 
 def check_placement(level: Level, wp) -> tuple[list[str], list[str]]:
@@ -249,6 +316,7 @@ def check_placement(level: Level, wp) -> tuple[list[str], list[str]]:
     trigger = wp["trigger"]["position"]
     yaw = shrine_yaw(wp)
     tag = wp["id"]
+    base = shrine[1] - SHRINE_ABOVE_FLOOR   # the floor the arrangement was made for
 
     # The arrival point: on free floor, with room around it for the whole party.
     floor = level.floor(trigger[0], trigger[2], trigger[1], 1.0)
@@ -257,56 +325,59 @@ def check_placement(level: Level, wp) -> tuple[list[str], list[str]]:
         return errors, warnings
     if abs(trigger[1] - floor) > 0.15:
         errors.append("%s: the arrival point is %+.2f m from the floor (%.2f)" % (tag, trigger[1] - floor, floor))
-    tight = 0
-    for dz in (-2, -1, 0, 1, 2):
-        for dx in (-2, -1, 0, 1, 2):
-            h = level.floor(trigger[0] + dx * CELL, trigger[2] + dz * CELL, floor, 0.4)
-            if h is None:
-                tight += 1
+    tight = sum(1 for dz in (-2, -1, 0, 1, 2) for dx in (-2, -1, 0, 1, 2)
+                if level.floor(trigger[0] + dx * CELL, trigger[2] + dz * CELL, floor, 0.4) is None)
     if tight:
         errors.append("%s: %d of the 25 floor cells within 1 m of the arrival point are blocked" % (tag, tight))
 
-    # The shrine: on flat free floor, not floating, not sunk, with nothing overhead.
-    heights = []
-    for x, z in footprint(shrine, yaw):
-        h = level.floor(x, z, shrine[1] + SINK, 0.5)
+    # The boulder rests on free floor. Where the floor rises behind it, it sinks in further (as the game's
+    # own rocks do on slopes); where the floor drops away, it would float, so that is not allowed.
+    front_floor = rock_base(level, shrine, yaw, base)
+    if front_floor is None or abs(front_floor - base) > 0.1:
+        errors.append("%s: the shrine is not at the floor in front of the boulder (%s)" % (
+            tag, "no floor there" if front_floor is None else "%.2f, shrine floor %.2f" % (front_floor, base)))
+    heights, missing = [], 0
+    for x, z in area(shrine, yaw, ROCK_FOOTPRINT):
+        h = level.floor(x, z, base + 0.4, 0.7)
         if h is None:
-            errors.append("%s: part of the shrine stands on blocked floor or over a drop" % tag)
-            break
-        heights.append(h)
+            missing += 1
+        else:
+            heights.append(h)
+    if missing:
+        errors.append("%s: %d of %d points under the boulder are not free floor (a wall, furniture or a drop)" % (
+            tag, missing, missing + len(heights)))
     if heights:
         low, high = min(heights), max(heights)
-        if high - low > 0.3:
-            errors.append("%s: the floor under the shrine varies by %.2f m" % (tag, high - low))
-        if not low - 0.2 <= shrine[1] <= low + 0.02:
-            errors.append("%s: the shrine base is at %.2f, the floor under it from %.2f to %.2f" % (tag, shrine[1], low, high))
-    for x, z in ((shrine[0], shrine[2]), (trigger[0], trigger[2])):
-        for h, _flags in level.grid.surfaces(x, z):
-            if shrine[1] + 0.5 < h < shrine[1] + SHRINE_HEIGHT + 0.3:
-                errors.append("%s: another floor %.1f m above the shrine (a balcony or upper storey)" % (tag, h - shrine[1]))
-                break
+        if low < base - FLOOR_DROP or high > base + FLOOR_RISE:
+            errors.append("%s: the floor under the boulder runs from %+.2f to %+.2f m around its base" % (tag, low - base, high - base))
+    # Headroom: where the boulder or the party stands on a floor, no second floor (a balcony,
+    # an upper storey) may run through it higher up.
+    for x, z in area(shrine, yaw, ROCK_BODY, 0.5) + [(trigger[0], trigger[2])]:
+        hs = [h for h, _flags in level.grid.surfaces(x, z)]
+        ground = [h for h in hs if base - FLOOR_DROP - 0.1 <= h <= base + FLOOR_RISE]
+        above = [h for h in hs if ground and min(ground) + 1.5 < h < base + ROCK_HEIGHT + 0.3]
+        if above:
+            errors.append("%s: another floor %.1f m above the waypoint (a balcony or upper storey)" % (tag, above[0] - base))
+            break
 
-    # The rune face must look at the arrival point, with walkable floor in between.
+    # The front must look at the arrival point, with walkable floor in between.
     fx, fz = front(yaw)
     dx, dz = trigger[0] - shrine[0], trigger[2] - shrine[2]
     dist = math.hypot(dx, dz)
     if dist and (fx * dx + fz * dz) / dist < 0.5:
-        warnings.append("%s: the rune face does not look towards the arrival point" % tag)
+        warnings.append("%s: the rune does not face the arrival point" % tag)
     steps = max(2, int(dist / 0.25))
     for k in range(1, steps):
         t = k / steps
-        x, z = shrine[0] + dx * t, shrine[2] + dz * t
-        if math.hypot(x - shrine[0], z - shrine[2]) < 0.5:
-            continue
-        if level.floor(x, z, floor, 0.5) is None:
-            errors.append("%s: something blocks the way between the arrival point and the shrine" % tag)
+        if level.floor(shrine[0] + dx * t, shrine[2] + dz * t, floor, 0.5) is None:
+            errors.append("%s: something blocks the way between the arrival point and the boulder" % tag)
             break
 
-    # Nothing of the game's in the way: characters, items and props near the shrine or the arrival point.
-    for o in level.near(level.solid, shrine[0], shrine[1], shrine[2], SHRINE_HALF_WIDTH + 1.0):
-        errors.append("%s: the shrine is %.1f m from %s" % (tag, math.dist(o["pos"], shrine), o["name"]))
+    # Nothing of the game's in the way: characters, items and props in or near the boulder or the arrival point.
+    for o in level.inside(level.solid, shrine, yaw, ROCK_BODY, 0.75):
+        errors.append("%s: the boulder would touch %s" % (tag, o["name"]))
     for o in level.near(level.solid, trigger[0], trigger[1], trigger[2], 1.5):
         errors.append("%s: the arrival point is %.1f m from %s" % (tag, math.dist(o["pos"], trigger), o["name"]))
-    for o in level.near(level.points, shrine[0], shrine[1], shrine[2], SHRINE_HALF_WIDTH + 0.5):
-        warnings.append("%s: the shrine stands on a point scripts send characters to (%s)" % (tag, o["name"]))
+    for o in level.inside(level.points, shrine, yaw, ROCK_BODY, 0.5):
+        warnings.append("%s: the boulder stands on a point scripts send characters to (%s)" % (tag, o["name"]))
     return errors, warnings

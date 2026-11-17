@@ -54,7 +54,7 @@ env:
   # Nexus allows only letters, digits, spaces and _ ' ( ) . - in a file name, at most 50 characters.
   NEXUS_DISPLAY_NAME: "Not Enough Waypoints"
   # At most 255 characters (enforced by Nexus from 2026-11-23).
-  NEXUS_FILE_DESCRIPTION: "Six new waypoint shrines in Acts 1 to 3. No other mods needed. Install with BG3 Mod Manager or Vortex."
+  NEXUS_FILE_DESCRIPTION: "Six new waypoints in Acts 1 to 3. No other mods needed. Install with BG3 Mod Manager or Vortex."
   PAGE_DIR: ".github/nexus"
 
 jobs:

@@ -2,7 +2,7 @@
 
 Thanks for helping. The most useful contributions are:
 
-1. **Placement reports**: a shrine that floats, sinks into the floor, clips into something, stands in the way, or an arrival point that puts the party somewhere awkward. Use the *Placement problem* issue form and attach a screenshot.
+1. **Placement reports**: a waypoint that floats, sinks into the floor, clips into something, stands in the way, or an arrival point that puts the party somewhere awkward. Use the *Placement problem* issue form and attach a screenshot.
 2. **Waypoint ideas**: a place you keep walking back to that is far from any waypoint. Use the *Waypoint idea* form, or open a pull request.
 3. **Code and documentation**: bug fixes and tooling.
 
@@ -33,9 +33,10 @@ py tools/extract_game_data.py --levels WLD_Main_A,SCL_Main_A,BGO_Main_A,CTY_Main
 py tools/survey.py find SCL_Main_A "Vendor"
 py tools/survey.py map SCL_Main_A -154 21.4 -171
 
-# 3. Let the survey suggest spots that pass every check, then try your own.
+# 3. Let the survey suggest spots that pass every check, then try your own and draw them on the plan.
 py tools/survey.py spots SCL_Main_A -154 21.4 -171
-py tools/survey.py check SCL_Main_A -157.75 -170.75 -155.75 -170.75 --y 21.4
+py tools/survey.py check SCL_Main_A -156.5 -170.75 -154.75 -170.75 --y 21.4
+py tools/survey.py map SCL_Main_A -155 21.4 -171 --try -156.5 -170.75 -154.75 -170.75
 
 # 4. Add the entry to waypoints.json (spots prints one with fresh GUIDs and a name handle).
 
@@ -56,11 +57,12 @@ py -m unittest discover -s tests
 | `where` | A sentence for people: where it is, who is near. It is copied into the story script as a comment. |
 | `level`, `group` | The level the waypoint is in, and the act group that goes with it (`WLD_Main_A` Act1, `SCL_Main_A` Act2, `BGO_Main_A` Act3, `CTY_Main_A` Act3b). The story locks a whole group when it leaves that act. |
 | `handle` | The localisation handle of the name. New ones come from `survey.py spots`. |
-| `shrine.position` | Where the shrine stands: x, the floor height under it minus 5 cm, z. |
-| `shrine.yaw` | Optional. The shrine turns its rune face towards the arrival point unless this says otherwise. |
+| `shrine.position` | Where the (invisible) shrine stands: x, the floor height where the boulder's front meets the floor plus 2.6 cm, z. The boulder stands behind it, the arrival point in front. `survey.py` works these out. |
+| `shrine.yaw` | Optional. The waypoint turns its rune towards the arrival point unless this says otherwise. |
 | `trigger.position` | The arrival point, on the floor. |
 | `decal.style` | `dark` (Acts 1 and 2, cellars and caves) or `light` (Baldur's Gate streets), as the game does. |
-| `shrine.guid`, `trigger.guid`, `decal.guid` | New random GUIDs. Never reuse or change a released one. |
+| `rock.style` | The boulder's colour: `grey`, `grey_wet`, `grey_moss`, `brown` or `brown_moss`. One mesh, different materials, so any of them fits. |
+| `shrine.guid`, `trigger.guid`, `decal.guid`, `rock.guid` | New random GUIDs. Never reuse or change a released one. |
 | `underdark` | `true` for a waypoint in the Underdark, so that Sovereign Glut follows the party there. |
 | `lockWith` | The id of one of the game's waypoints. Whenever the story locks that one, this one is locked too (the Hollow uses `WAYP_DEN_Camp`, for the Grove's lockdown). |
 
@@ -69,7 +71,7 @@ How the pieces fit together, and what the checks look for, is in [docs/ARCHITECT
 ### Choosing a good spot
 
 - Somewhere players go back to, and far from the nearest waypoint.
-- Out of the way: not in a doorway, not across a path, not on a spot where the story sends characters (the checks warn about those).
+- Out of the way: the boulder is 3 m wide and reaches 2.3 m behind the shrine, so keep it out of doorways and paths (draw it with `map --try`; the checks cannot see walkways) and off spots where the story sends characters (the checks warn about those).
 - Where travelling in cannot skip the story. A waypoint behind a door or barrier that the story keeps shut lets players walk around it, so use `lockWith`, or choose another spot.
 - Not in a place where fast travel is blocked for the whole visit (a danger zone such as the House of Hope): players could travel in, but not out again.
 
@@ -84,7 +86,7 @@ How the pieces fit together, and what the checks look for, is in [docs/ARCHITECT
 
 - `.\pack.ps1 -Install` copies the pak to your BG3 `Mods` folder; enable it in your mod manager once.
 - Check a fresh save and a save that is far into the story: the waypoints must appear in both.
-- Look at the shrine from a few sides and travel to it with a full party.
+- Look at the waypoint from a few sides, check that the rune sits on the boulder, and travel to it with a full party.
 
 ## Pull requests
 

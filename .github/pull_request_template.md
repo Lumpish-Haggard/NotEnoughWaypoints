@@ -11,7 +11,7 @@
 
 <!--
 A waypoint: paste the output of `py tools/build_waypoints.py --check` run with the game cache,
-and describe the in-game test (or attach a screenshot of the shrine).
+and describe the in-game test (or attach a screenshot of the waypoint).
 -->
 
 ## Checklist

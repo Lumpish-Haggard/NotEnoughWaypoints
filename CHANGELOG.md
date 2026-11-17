@@ -11,11 +11,11 @@ Nothing yet.
 First public release.
 
 ### Added
-- **Six waypoint shrines**, each with the game's own shrine and rune:
-  - **The Hollow** (Act 1): on the floor of the Hollow in the Emerald Grove, below Okta's and Auntie Ethel's stalls, across from Dammon's forge.
-  - **Underdark - Arcane Tower** (Act 1): outside the tower's front door.
-  - **Shattered Sanctum** (Act 1): inside the goblin camp's temple, east of the spider pits.
-  - **Moonrise Towers - Main Floor** (Act 2): inside the front doors, next to Lann Tarv's stall.
+- **Six waypoints**, each built like the game's own waypoint at the Blighted Village: a boulder with the game's waypoint rune on it.
+  - **The Hollow** (Act 1): on the floor of the Hollow in the Emerald Grove, against the ledge below Okta's and Auntie Ethel's stalls, across from Dammon's forge.
+  - **Underdark - Arcane Tower** (Act 1): outside the tower's front door, at the end of the ledge beside the landing.
+  - **Shattered Sanctum** (Act 1): inside the goblin camp's temple, against a pillar east of the spider pits.
+  - **Moonrise Towers - Main Floor** (Act 2): inside the front doors, in front of Lann Tarv's stall.
   - **Open Hand Temple** (Act 3): in the street outside the temple in Rivington, next to the Circus of the Last Days.
   - **Guildhall** (Act 3): in Nine-Fingers Keene's hall.
 - They work like the game's own waypoints: walk near one to unlock it, and the story locks it with the rest of its act when it leaves that act.
