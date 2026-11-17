@@ -9,7 +9,7 @@
 					<attribute id="LevelName" type="FixedString" value="BGO_Main_A" />
 					<attribute id="MapKey" type="FixedString" value="f673aeea-fca1-41c7-b82e-cab14bc97173" />
 					<attribute id="Name" type="LSString" value="S_NEW_WAYP_WYR_OpenHandTemple_Rock" />
-					<attribute id="TemplateName" type="FixedString" value="99179bdb-43f3-4fa4-a40e-46c2101d3426" />
+					<attribute id="TemplateName" type="FixedString" value="64e75246-41fb-4759-8e16-43b3e8a20c7b" />
 					<attribute id="Type" type="FixedString" value="scenery" />
 					<children>
 						<node id="LayerList">
@@ -24,8 +24,8 @@
 							</children>
 						</node>
 						<node id="Transform">
-							<attribute id="Position" type="fvec3" value="-24.211 46.549 -13.531" />
-							<attribute id="RotationQuat" type="fvec4" value="-0.5636225 0.6755148 -0.4675241 0.086201" />
+							<attribute id="Position" type="fvec3" value="-6.902 44.049 -6.921" />
+							<attribute id="RotationQuat" type="fvec4" value="-0.3418055 0.5911066 -0.647625 0.3381477" />
 							<attribute id="Scale" type="float" value="1.2" />
 						</node>
 					</children>

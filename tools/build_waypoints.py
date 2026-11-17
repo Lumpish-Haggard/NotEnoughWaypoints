@@ -4,8 +4,8 @@ build_waypoints.py - check waypoints.json and generate the mod files from it.
 What it writes (all from waypoints.json; never edit these by hand)
   Mods/NotEnoughWaypoints/Globals/<level>/Items/<guid>.lsx      the shrines (invisible; what players use)
   Mods/NotEnoughWaypoints/Globals/<level>/Triggers/<guid>.lsx   the arrival points
-  Mods/NotEnoughWaypoints/Levels/<level>/Scenery/<guid>.lsx     the boulders
-  Mods/NotEnoughWaypoints/Levels/<level>/Decals/<guid>.lsx      the runes on the boulders
+  Mods/NotEnoughWaypoints/Levels/<level>/Scenery/<guid>.lsx     the boulders (style "boulder")
+  Mods/NotEnoughWaypoints/Levels/<level>/Decals/<guid>.lsx      the runes, on the boulders or on a wall
   Mods/NotEnoughWaypoints/Story/RawFiles/Goals/NotEnoughWaypoints.txt
   Mods/NotEnoughWaypoints/Localization/Waypointshrines.lsx      waypoint id -> name handle
   Localization/English/NotEnoughWaypoints.xml                   the English names
@@ -17,9 +17,10 @@ What it checks
   * meta.lsx: folder, UUID and version (--version X.Y.Z: that the mod is version X.Y.Z.0
     and that CHANGELOG.md has a section for it)
   * with the game cache (tools/extract_game_data.py): every waypoint against the game's
-    navigation grid and the objects the game places nearby (flat free floor under the boulder
-    and the arrival point, room for the party, nothing in the way, no floor overhead),
-    and no clash with the game's own waypoint ids, names or object GUIDs
+    navigation grid and everything the game places nearby, its sub-levels included (flat free
+    floor under the boulder and the arrival point, room for the party, nothing in the way, no
+    floor overhead; for a rune on a wall, a wall behind all of it and nothing in front), the
+    story's travel zones, and no clash with the game's own waypoint ids, names or object GUIDs
 
 Usage:
   python tools/build_waypoints.py                  # check, then write the files
@@ -35,9 +36,11 @@ import sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from waypoints import (CACHE, DATA_FILE, DECAL_DIMENSIONS, DECAL_TEMPLATES, MOD, ROCK_SCALE, ROCK_TEMPLATES,  # noqa: E402
-                       ROOT, SHRINE_TEMPLATE, TRIGGER_TEMPLATE, Level, check_placement, decal_transform, load, num,
-                       object_names, problems, quat_yaw, rock_transform, shrine_yaw, vanilla_waypoints, PARTS)
+from waypoints import (CACHE, CACHE_VERSION, DATA_FILE, DECAL_DIMENSIONS, DECAL_TEMPLATES, MOD, ROCK_SCALE,  # noqa: E402
+                       ROCK_TEMPLATES, ROOT, SHRINE_TEMPLATE, TRIGGER_TEMPLATE, WALL_DECAL_DIMENSIONS, WALL_DECAL_SCALE, Level,
+                       cache_version, check_placement, decal_transform, describe, load, load_story, num, object_names,
+                       parts_of, problems, quat_yaw, rock_transform, shrine_yaw, story_zones, vanilla_waypoints,
+                       wall_decal_transform)
 
 MOD_DIR = os.path.join(ROOT, "Mods", MOD)
 GENERATED_DIRS = [os.path.join(MOD_DIR, "Globals"), os.path.join(MOD_DIR, "Levels")]
@@ -113,9 +116,14 @@ def level_files(wp):
     names = object_names(wp)
     yaw = shrine_yaw(wp)
     shrine = wp["shrine"]["position"]
-    decal_pos, decal_rot = decal_transform(shrine, yaw)
-    rock_pos, rock_rot = rock_transform(shrine, yaw)
-    return {
+    on_wall = wp.get("style") == "wall"
+    if on_wall:
+        decal_pos, decal_rot = wall_decal_transform(shrine, yaw)
+        dimensions, decal_scale = WALL_DECAL_DIMENSIONS, WALL_DECAL_SCALE
+    else:
+        decal_pos, decal_rot = decal_transform(shrine, yaw)
+        dimensions, decal_scale = DECAL_DIMENSIONS, 1
+    files = {
         os.path.join(MOD_DIR, "Globals", level, "Items", wp["shrine"]["guid"] + ".lsx"):
             game_object(level, wp["shrine"]["guid"], names["shrine"], SHRINE_TEMPLATE, "item", shrine, quat_yaw(yaw)),
         os.path.join(MOD_DIR, "Globals", level, "Triggers", wp["trigger"]["guid"] + ".lsx"):
@@ -124,11 +132,14 @@ def level_files(wp):
                         children_before=['<node id="FadeChildren" />']),
         os.path.join(MOD_DIR, "Levels", level, "Decals", wp["decal"]["guid"] + ".lsx"):
             game_object(level, wp["decal"]["guid"], names["decal"], DECAL_TEMPLATES[wp["decal"]["style"]], "decal",
-                        decal_pos, decal_rot, extra=[("Dimensions", "fvec3", vec(DECAL_DIMENSIONS, 3))]),
-        os.path.join(MOD_DIR, "Levels", level, "Scenery", wp["rock"]["guid"] + ".lsx"):
-            game_object(level, wp["rock"]["guid"], names["rock"], ROCK_TEMPLATES[wp["rock"]["style"]], "scenery",
-                        rock_pos, rock_rot, scale=ROCK_SCALE),
+                        decal_pos, decal_rot, extra=[("Dimensions", "fvec3", vec(dimensions, 3))], scale=decal_scale),
     }
+    if not on_wall:
+        rock_pos, rock_rot = rock_transform(shrine, yaw)
+        files[os.path.join(MOD_DIR, "Levels", level, "Scenery", wp["rock"]["guid"] + ".lsx")] = game_object(
+            level, wp["rock"]["guid"], names["rock"], ROCK_TEMPLATES[wp["rock"]["style"]], "scenery",
+            rock_pos, rock_rot, scale=ROCK_SCALE)
+    return files
 
 
 def ref(kind, wp, part):
@@ -202,8 +213,40 @@ def goal(waypoints):
             out += ["PROC", 'PROC_LockWaypointForAll("%s")' % wp["lockWith"], "THEN",
                     'PROC_LockWaypointForAll("%s");' % wp["id"], ""]
         out.append("//END_REGION")
+    moved = [wp for wp in waypoints if wp.get("placement", 1) > 1]
+    if moved:
+        out += [
+            "",
+            "//REGION Moved: where this version puts them, also in saves made before",
+            "// A save keeps where its items and triggers stand, so moving a released waypoint in the mod's",
+            "// files would move it in new games only. This puts the shrine and the arrival point of each",
+            "// moved waypoint where this version has them: once per save, when the waypoint's level is",
+            "// loaded, the way the game's own hotfixes move objects. In a new game they are there already.",
+        ]
+        for wp in moved:
+            shrine, trigger = wp["shrine"]["position"], wp["trigger"]["position"]
+            out += [
+                "IF",
+                'LevelLoaded("%s")' % wp["level"],
+                "AND",
+                'NOT DB_NEW_WAYP_Placed("%s",%d)' % (wp["id"], wp["placement"]),
+                "THEN",
+                'DB_NEW_WAYP_Placed("%s",%d);' % (wp["id"], wp["placement"]),
+                "ToTransform(%s_%s,%s,%s,%s,0.0,%s,0.0);" % (
+                    object_names(wp)["shrine"], wp["shrine"]["guid"], *(real(v) for v in shrine), real(shrine_yaw(wp))),
+                'TeleportToPosition(%s_%s,%s,%s,%s,"",0,0,0,0,0);' % (
+                    object_names(wp)["trigger"], wp["trigger"]["guid"], *(real(v) for v in trigger)),
+                "",
+            ]
+        out.append("//END_REGION")
     out += ["EXITSECTION", "", "ENDEXITSECTION", ""]
     return "\n".join(out)
+
+
+def real(v) -> str:
+    """A number as Osiris reads a REAL: always with a decimal point."""
+    s = num(v, 3)
+    return s if "." in s else s + ".0"
 
 
 def name_keys(waypoints):
@@ -296,6 +339,11 @@ def check_game(waypoints, errors, warnings):
                 errors.append("%s: lockWith %s is not one of the game's waypoints" % (wp["id"], wp["lockWith"]))
     else:
         warnings.append("no tools/.cache/vanilla_waypoints.json: the game's own waypoints were not compared")
+    version = cache_version()
+    if version is not None and version < CACHE_VERSION:
+        warnings.append("the game cache was made by an older extract_game_data.py: it has no sub-levels, walls or story "
+                        "zones, so most of the level was not checked (run tools/extract_game_data.py again)")
+    story = load_story()
     checked = 0
     for level in sorted({wp["level"] for wp in waypoints}):
         if not Level.available(level):
@@ -305,14 +353,35 @@ def check_game(waypoints, errors, warnings):
         lv = Level(level)
         keys = {o["key"] for o in lv.objects}
         for wp in [w for w in waypoints if w["level"] == level]:
-            for part in PARTS:
+            for part in parts_of(wp):
                 if wp[part]["guid"] in keys:
                     errors.append("%s: %s.guid is already used by the game" % (wp["id"], part))
             e, w = check_placement(lv, wp)
             errors += e
             warnings += w
+            warnings += zone_warnings(lv, story, wp)
             checked += 1
     return checked
+
+
+def zone_warnings(lv, story, wp):
+    """The story's travel zones a waypoint stands in. They are not errors: the game's own waypoints
+    stand in some (Moonrise Towers is a danger zone during the assault), but each needs a decision."""
+    out = []
+    seen = set()
+    for point in (wp["trigger"]["position"], wp["shrine"]["position"]):
+        for o, entries in story_zones(lv, story, point):
+            for e in entries:
+                if e["removed"] or (o["key"], e["type"], e["id"]) in seen:
+                    continue
+                seen.add((o["key"], e["type"], e["id"]))
+                if e["type"] == "danger":
+                    out.append("%s: stands in the danger zone %s (%s, set in %s): while it is active, nobody "
+                               "in it can travel out" % (wp["id"], e["id"], describe(o), e["goal"]))
+                elif e["type"] == "blocked":
+                    out.append("%s: stands in a blocked waypoint zone (%s, set in %s): while it is active, "
+                               "no waypoint works there" % (wp["id"], describe(o), e["goal"]))
+    return out
 
 
 def main():

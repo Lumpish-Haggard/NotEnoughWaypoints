@@ -9,37 +9,38 @@
 
 [Download](../../releases/latest) ·
 [Report a bug or a misplaced waypoint](../../issues/new/choose) ·
+[What is planned](docs/ROADMAP.md) ·
 [Contributing](CONTRIBUTING.md) ·
 [Changelog](CHANGELOG.md)
 
 </div>
 
 > [!NOTE]
-> **First release.** Every waypoint was placed with the game's own navigation data and checked against everything the game puts nearby. If one still floats, clips into something or stands in the way, please [report it](../../issues/new/choose) with a screenshot.
+> **Version 1.1 moved five of the six waypoints** to where they were meant to be, four of them onto a wall as the game does indoors, and moves them in saves made with 1.0 too. The new places pass every check of the tools, which now also read the sub-levels the game builds its places from and how far everything in them reaches, but have not been seen in game yet. If a waypoint floats, clips into something, stands in the way or its rune is not on its wall, please [report it](../../issues/new/choose) with a screenshot. What comes next is in [what is planned](docs/ROADMAP.md).
 
 ---
 
 Baldur's Gate 3 puts most of its waypoints at the edge of a place: outside the Emerald Grove, outside the goblin camp's temple, outside Moonrise Towers. The traders, quest givers and doors you keep coming back to are often a long walk further in. **This mod adds six waypoints where that walk is longest.**
 
-Each one is built exactly like the game's own waypoint at the Blighted Village: a boulder with the game's waypoint rune on its face. They work like the game's own too: walk near one to unlock it, then travel to it from the map or any other waypoint.
+Each one is built the way the game builds its own in that kind of place: in buildings and against them, the game's waypoint rune on a wall; in the open, the rune on a boulder like the one at the Blighted Village. They work like the game's own too: walk near one to unlock it, then travel to it from the map or any other waypoint.
 
 ## The waypoints
 
 | Waypoint | Act | Where | Saves you |
 |---|---|---|---|
-| The Hollow | 1 | Emerald Grove: on the floor of the Hollow, against the ledge below Okta's and Auntie Ethel's stalls, across from Dammon's forge | the walk in from the game's *Emerald Grove Environs* waypoint, outside the gate |
-| Underdark - Arcane Tower | 1 | Outside the Arcane Tower's front door, at the end of the ledge beside the landing | the walk from the nearest Underdark waypoint and up past the tower's turrets |
-| Shattered Sanctum | 1 | Inside the temple, against a pillar east of the spider pits, between Dror Ragzlin's throne room, Minthara and True Soul Gut | the walk from the game's *Goblin Camp* waypoint, outside, through the temple's entrance hall |
-| Moonrise Towers - Main Floor | 2 | Inside the front doors, in front of Lann Tarv's stall | the walk from the game's *Moonrise Towers* waypoint, outside, through the front doors |
-| Open Hand Temple | 3 | Rivington: in the street outside the Open Hand Temple, a few steps from the Circus of the Last Days | the walk up from the *Rivington* waypoint |
-| Guildhall | 3 | Lower City: in Nine-Fingers Keene's hall | the walk through the sewers |
+| The Hollow | 1 | Emerald Grove: a boulder on the floor of the Hollow, against the ledge below Okta's and Auntie Ethel's stalls, across from Dammon's forge | the walk in from the game's *Emerald Grove Environs* waypoint, outside the gate |
+| Underdark - Arcane Tower | 1 | The rune on the tower's wall, a few steps from its front door | the walk from the nearest Underdark waypoint and up past the tower's turrets |
+| Shattered Sanctum | 1 | Inside the temple: the rune on the wall by the pillar east of the spider pits, between Dror Ragzlin's throne room, Minthara and True Soul Gut | the walk from the game's *Goblin Camp* waypoint, outside, through the temple's entrance hall |
+| Moonrise Towers - Main Floor | 2 | The rune on a wall of the main floor, east of the bazaar | the walk from the game's *Moonrise Towers* waypoint, outside, through the front doors |
+| Open Hand Temple | 3 | Rivington: a boulder in the street in front of the temple, where the refugees beg | the walk up from the *Rivington* waypoint |
+| Guildhall | 3 | Lower City: the rune on the wall beside the bar in the Guildhall's main hall, where Nine-Fingers Keene's visitors wait | the walk through the sewers |
 
 ## Features
 
-- **Built like the game's own**: each one is a copy of the Blighted Village waypoint, boulder and rune, in a colour that suits the place (sandy brown in the Hollow, wet grey in the Underdark, plain grey indoors). Unlocked the same way: come near one, or use it.
+- **Built like the game's own**: in buildings and against them, the rune on a wall, turned and raised as on the game's own wall waypoints (Moonrise Towers, the Lower City); in the open, a copy of the Blighted Village boulder and rune, in a colour that suits the place. Unlocked the same way: come near one, or use it.
 - **They follow the story.** Like the game's own waypoints, each is locked with the rest of its act when the story moves on. The Hollow is also locked when the druids seal the Emerald Grove, at the same moment as the game's Grove waypoint, so it never gets you past the barrier.
 - **Sovereign Glut comes along**: the Arcane Tower counts as an Underdark waypoint, so he follows the party there like he does between the game's Underdark waypoints.
-- **New game or existing save**: the story picks the waypoints up when you load.
+- **New game or existing save**: the story picks the waypoints up when you load, and moves a waypoint that an update moved in a save made before it.
 - **No other mods needed.** The mod adds its own objects, one small story script and the waypoint names; it replaces none of the game's files.
 - **Multiplayer**: waypoints unlock for the whole party, as usual.
 
@@ -64,16 +65,16 @@ Removing it in the middle of a playthrough is not recommended: once a save has t
 
 | To | Do this |
 |---|---|
-| Unlock one | Walk near the boulder, or use it. |
+| Unlock one | Walk near the rune, or use it. |
 | Travel | Use any waypoint, or the map's travel button, and pick it from the list. |
 | Find one that disappeared | The story locks every waypoint of an act when it leaves that act, and the Hollow when the Emerald Grove is sealed. Locked waypoints leave the list, the game's own included. |
 
 ## How the waypoints were placed
 
-- **With the game's own data.** The game keeps a navigation grid for every level: where characters can stand, and how high the floor is. The tools in this repository read it from your installation and place every boulder and arrival point on it. Nothing is a guessed coordinate.
-- **Copied from the game's own waypoint.** In the game, the waypoint you use is an invisible object; what you see is a rock next to it with the rune projected onto its face, set up by hand for every waypoint. These six copy the Blighted Village waypoint exactly (the invisible object, the boulder at the same size and angle, the rune 1.5 m up its face), because it stands upright on flat ground and so fits any flat floor. The tests check that the copy gives back the game's own boulder and rune.
-- **Checked on every change.** [`tools/build_waypoints.py`](tools/build_waypoints.py) checks each waypoint against the game files: free floor under the whole boulder (it may sit into a rise behind it, as the game's rocks do, but never over a drop), room for the party around the arrival point, nothing of the game's (characters, items, props) within reach of the boulder, no floor overhead, a clear way between the arrival point and the boulder, and no clash with the game's own waypoint names or IDs.
-- **What it cannot see**: walls and decoration that are not part of the navigation grid, and how the spot looks. Only the game shows that, so please [report](../../issues/new/choose) anything that looks wrong.
+- **With the game's own data.** The game keeps a navigation grid for every level: where characters can stand, and how high the floor is. The tools in this repository read it from your installation, together with every object the game places and how far it reaches, and place every rune, boulder and arrival point with it. Nothing is a guessed coordinate.
+- **Copied from the game's own waypoints.** In the game, the waypoint you use is an invisible object; what you see is the rune projected onto something next to it: in towns and buildings a wall that is already there, in the open a rock set up by hand. On a wall, these runes have the turn, height and size of the game's own wall runes (the tests compare them with the Lower City Central Wall and Moonrise Towers waypoints), and stand on the wall's face as measured from its tiles. In the open, they copy the Blighted Village waypoint exactly (the invisible object, the boulder at the same size and angle, the rune 1.5 m up its face), and the tests check that the copy gives back the game's own boulder and rune.
+- **Checked on every change.** [`tools/build_waypoints.py`](tools/build_waypoints.py) checks each waypoint against the game files, including the sub-levels the game builds its places from (the Guildhall, Rivington, the goblin camp and the Emerald Grove are each one), and against the box each object fills. For a rune on a wall: a wall at least 0.3 m thick behind the whole rune, nothing standing in front of it, no door or window along it, and the floor clear of it. For a boulder: free floor under all of it (it may sit into a rise behind it, as the game's rocks do, but never over a drop), nothing of the game's inside it, and no wall, floor or ceiling through it. For both: room for the party at the arrival point and nothing standing there, a clear way to the waypoint, the story's travel zones it stands in, and no clash with the game's own waypoint names or IDs.
+- **What it cannot see**: the exact shape of each object (it knows the box each fills, which is loose around a rock or a tree), and how the spot looks. Only the game shows that, so please [report](../../issues/new/choose) anything that looks wrong.
 
 ## Compatibility
 
@@ -87,7 +88,7 @@ Removing it in the middle of a playthrough is not recommended: once a save has t
 <details>
 <summary>The new waypoints are not on the map</summary>
 
-Like the game's own, each one only appears after you discover it: walk near its boulder. If you are standing next to it and nothing happens, check that the mod is active and that the load order was exported (BG3 Mod Manager: *Export Order to Game*).
+Like the game's own, each one only appears after you discover it: walk near its rune. If you are standing next to it and nothing happens, check that the mod is active and that the load order was exported (BG3 Mod Manager: *Export Order to Game*).
 </details>
 
 <details>
@@ -97,7 +98,7 @@ The story locked it, together with the game's own waypoints of that act (or, for
 </details>
 
 <details>
-<summary>A waypoint floats, sinks into the floor or blocks a path</summary>
+<summary>A waypoint floats, sinks into the floor, blocks a path, or its rune is not on its wall</summary>
 
 Please use the [placement form](../../issues/new/choose) and attach a screenshot.
 </details>
@@ -130,7 +131,7 @@ Mods/NotEnoughWaypoints/          the mod (what goes into the .pak)
 Localization/English/             the English names (generated)
 tools/            game-data extraction, navigation-grid reader, placement checks, survey, generator, release helpers
 tests/            tests for the tools
-docs/             how a waypoint works
+docs/             how a waypoint works, and what is planned
 pack.ps1          build and verify the .pak and the release zip
 ```
 
