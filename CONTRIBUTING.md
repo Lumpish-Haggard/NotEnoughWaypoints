@@ -25,7 +25,9 @@ On Windows the commands below use the `py` launcher; use `python` elsewhere.
 ## Adding or moving a waypoint
 
 ```powershell
-# 1. Read the levels from your install (once per game patch, and for every level you work in).
+# 1. Read the levels from your install (once per game patch, and for every level you work in):
+#    their sub-levels, walls, trigger volumes and how far everything reaches, and the story.
+#    Takes a few minutes.
 #    Writes tools/.cache/ (git-ignored; never commit it).
 py tools/extract_game_data.py --levels WLD_Main_A,SCL_Main_A,BGO_Main_A,CTY_Main_A
 
@@ -33,17 +35,23 @@ py tools/extract_game_data.py --levels WLD_Main_A,SCL_Main_A,BGO_Main_A,CTY_Main
 py tools/survey.py find SCL_Main_A "Vendor"
 py tools/survey.py map SCL_Main_A -154 21.4 -171
 
-# 3. Let the survey suggest spots that pass every check, then try your own and draw them on the plan.
+# 3. Let the survey suggest places that pass every check: runes on walls (in and against
+#    buildings), or boulders (in the open). --all also lists what stops the rest.
+py tools/survey.py walls CTY_Main_A -27 30.6 765
 py tools/survey.py spots SCL_Main_A -154 21.4 -171
 py tools/survey.py check SCL_Main_A -156.5 -170.75 -154.75 -170.75 --y 21.4
 py tools/survey.py map SCL_Main_A -155 21.4 -171 --try -156.5 -170.75 -154.75 -170.75
 
-# 4. Add the entry to waypoints.json (spots prints one with fresh GUIDs and a name handle).
+# 4. Add the entry to waypoints.json (walls and spots print one with fresh GUIDs).
 
 # 5. Check it and regenerate the mod files (commit them with your change).
 py tools/build_waypoints.py
 
-# 6. Run the tests and try it in game.
+# 6. Review everything around it: what each check found, the story's regions it stands in,
+#    and the objects nearby with the sub-level each comes from.
+py tools/survey.py report NEW_WAYP_MOO_MainFloor
+
+# 7. Run the tests and try it in game.
 py -m unittest discover -s tests
 .\pack.ps1 -Install
 ```
@@ -57,12 +65,16 @@ py -m unittest discover -s tests
 | `where` | A sentence for people: where it is, who is near. It is copied into the story script as a comment. |
 | `level`, `group` | The level the waypoint is in, and the act group that goes with it (`WLD_Main_A` Act1, `SCL_Main_A` Act2, `BGO_Main_A` Act3, `CTY_Main_A` Act3b). The story locks a whole group when it leaves that act. |
 | `handle` | The localisation handle of the name. New ones come from `survey.py spots`. |
-| `shrine.position` | Where the (invisible) shrine stands: x, the floor height where the boulder's front meets the floor plus 2.6 cm, z. The boulder stands behind it, the arrival point in front. `survey.py` works these out. |
-| `shrine.yaw` | Optional. The waypoint turns its rune towards the arrival point unless this says otherwise. |
+| `style` | `wall` for the rune on a wall the game already has (in and against buildings), or `boulder` (the default) for the Blighted Village boulder and rune (in the open). |
+| `shrine.position` | Where the (invisible) shrine stands: for a rune on a wall, on the wall's face; for a boulder, where the boulder's front meets the floor. Its height is the floor's plus 2.6 cm. `survey.py` works these out. |
+| `shrine.yaw` | The way the rune faces. Needed for a rune on a wall (the way the wall faces); a boulder turns its rune towards the arrival point unless this says otherwise. |
 | `trigger.position` | The arrival point, on the floor. |
 | `decal.style` | `dark` (Acts 1 and 2, cellars and caves) or `light` (Baldur's Gate streets), as the game does. |
-| `rock.style` | The boulder's colour: `grey`, `grey_wet`, `grey_moss`, `brown` or `brown_moss`. One mesh, different materials, so any of them fits. |
+| `rock.style` | A boulder's colour: `grey`, `grey_wet`, `grey_moss`, `brown` or `brown_moss`. One mesh, different materials, so any of them fits. A rune on a wall has no `rock`. |
 | `shrine.guid`, `trigger.guid`, `decal.guid`, `rock.guid` | New random GUIDs. Never reuse or change a released one. |
+| `placement` | Optional, 1 if missing. **Raise it by one whenever a released waypoint moves**: the story then moves the shrine and the arrival point in saves made before, once, when the level is loaded. |
+| `retired` | GUIDs a released waypoint no longer uses (the boulder of a waypoint that moved onto a wall). Kept so that they are never used again. |
+| `accept` | Check results (a piece of their text, such as an object's name) that were looked at and judged harmless, best in game. They are reported as warnings instead of errors. |
 | `underdark` | `true` for a waypoint in the Underdark, so that Sovereign Glut follows the party there. |
 | `lockWith` | The id of one of the game's waypoints. Whenever the story locks that one, this one is locked too (the Hollow uses `WAYP_DEN_Camp`, for the Grove's lockdown). |
 
@@ -71,7 +83,8 @@ How the pieces fit together, and what the checks look for, is in [docs/ARCHITECT
 ### Choosing a good spot
 
 - Somewhere players go back to, and far from the nearest waypoint.
-- Out of the way: the boulder is 3 m wide and reaches 2.3 m behind the shrine, so keep it out of doorways and paths (draw it with `map --try`; the checks cannot see walkways) and off spots where the story sends characters (the checks warn about those).
+- Built like the game's own: in a town, a fortress or a building, the rune on a wall; a boulder only in the open or in a cave, where the game uses rocks too.
+- Out of the way: a boulder is 3 m wide and reaches 2.3 m behind the shrine, so keep it out of doorways and paths (draw it with `map --try`; the checks cannot see walkways) and off spots where the story sends characters (the checks warn about those).
 - Where travelling in cannot skip the story. A waypoint behind a door or barrier that the story keeps shut lets players walk around it, so use `lockWith`, or choose another spot.
 - Not in a place where fast travel is blocked for the whole visit (a danger zone such as the House of Hope): players could travel in, but not out again.
 
@@ -81,12 +94,14 @@ How the pieces fit together, and what the checks look for, is in [docs/ARCHITECT
 - **Generated files are never edited by hand.** Everything under `Mods/NotEnoughWaypoints/` except `meta.lsx`, and `Localization/`, comes from `waypoints.json`. CI fails if they are out of date.
 - **The game's layout is the reference.** The level files follow the game's own (same attributes, same header); if you change the generator, compare its output with the game's files.
 - The navigation grid format is not documented; [`tools/navgrid.py`](tools/navgrid.py) explains what is known. If a game patch changes it, the reader stops with an error instead of guessing.
+- [`tools/gamefiles.py`](tools/gamefiles.py) reads the level and story files; it needs no game files, so its tests run in CI on small samples written in the same layout. What it assumes about the files (a box trigger's size, how a prism rises, the order a tile's rotation is written in) was checked against where the game's own characters stand; [docs/ROADMAP.md](docs/ROADMAP.md) lists those facts under *Notes for contributors*.
 
 ## Testing in game
 
 - `.\pack.ps1 -Install` copies the pak to your BG3 `Mods` folder; enable it in your mod manager once.
 - Check a fresh save and a save that is far into the story: the waypoints must appear in both.
-- Look at the waypoint from a few sides, check that the rune sits on the boulder, and travel to it with a full party.
+- Look at the waypoint from a few sides: the rune whole on its wall or boulder, nothing of it on the floor, on furniture or on the far side of the wall. Travel to it with a full party.
+- A waypoint that moved: load a save made before the move, in or near its level, and check that clicking the new rune opens the travel window and that the party arrives in front of it.
 
 ## Pull requests
 

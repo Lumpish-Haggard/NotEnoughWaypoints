@@ -3,11 +3,16 @@ extract_game_data.py - read what the waypoint checks need out of your own Baldur
 installation (nothing is downloaded, nothing of it is committed).
 
 Uses LSLib's Divine.exe to extract, for every level that has (or will get) a waypoint:
-  * the navigation grid (Levels/<level>/Ai/aigrid.data)   -> tools/.cache/levels/<level>/aigrid.data
+  * the navigation grid (Levels/<level>/Ai/aigrid.data)       -> tools/.cache/levels/<level>/aigrid.data
   * every character, item, trigger, decal and prop the game
-    places there                                          -> tools/.cache/levels/<level>/objects.json
+    places there, including those of the sub-levels the level
+    is built from (the Guildhall, Rivington's streets, the
+    goblin camp, the Emerald Grove ...), in world coordinates -> tools/.cache/levels/<level>/objects.json
+  * the tiles of its walls, floors and ceilings               -> tools/.cache/levels/<level>/tiles.json
 and, for the whole game:
-  * the game's own waypoints, with their English names     -> tools/.cache/vanilla_waypoints.json
+  * the game's own waypoints, with their English names         -> tools/.cache/vanilla_waypoints.json
+  * what the story does with waypoints and travel: every lock
+    and unlock, the danger zones and blocked waypoint zones    -> tools/.cache/story.json
 
 Run it again after a game patch, then run build_waypoints.py to check the waypoints.
 
@@ -16,7 +21,8 @@ Usage:
 
 Without --levels it reads the levels used in waypoints.json. Both paths are auto-detected
 (Steam libraries, GOG, Vortex / common LSLib folders) or can be given with the environment
-variables DIVINE_PATH and BG3_PATH.
+variables DIVINE_PATH and BG3_PATH. --keep-work keeps the converted game files in
+tools/.cache/work_lsx for a closer look.
 """
 from __future__ import annotations
 
@@ -24,6 +30,7 @@ import argparse
 import glob
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -32,12 +39,17 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from waypoints import CACHE, DATA_FILE, GROUP_OF_LEVEL, load  # noqa: E402
+import gamefiles  # noqa: E402
+from navgrid import NavGrid  # noqa: E402
+from waypoints import CACHE, CACHE_VERSION, DATA_FILE, GROUP_OF_LEVEL, load  # noqa: E402
 
 GAME_FOLDER = "Baldurs Gate 3"
 # Later modules override earlier ones. Honour adds objects for Honour mode only, so it is left out.
 MODULES = ("Gustav", "GustavDev")
-KINDS = ("Characters", "Items", "Triggers", "Decals", "Scenery", "LevelTemplates")
+TEMPLATE_MODULES = ("Shared", "SharedDev", "Gustav", "GustavDev", "GustavX")
+KINDS = ("Characters", "Items", "Triggers", "Decals", "Scenery", "LevelTemplates", "TileConstructions")
+OBJECT_KINDS = KINDS[:-1]
+MAX_DEPTH = 4   # level templates inside sub-levels inside sub-levels ...
 
 
 def windows_drives():
@@ -124,36 +136,154 @@ def divine(exe, *args):
     return res.stdout
 
 
-ATTR = re.compile(r'<attribute id="(\w+)" type="\w+" (?:value|handle)="([^"]*)"')
+def extract(exe, paks, work, expr):
+    """Extract the files matching expr from every package, later packages overriding earlier ones."""
+    for pak in paks:
+        print("  from", os.path.basename(pak))
+        divine(exe, "-a", "extract-package", "-s", pak, "-d", work, "-x", expr, "--use-regex")
 
 
-def index_objects(lsx_root, level):
-    """Every placed object of one level, later modules overriding earlier ones (same MapKey)."""
-    by_key = {}
-    for module in MODULES:
-        for scope in ("Globals", "Levels"):
-            for kind in KINDS:
-                path = os.path.join(lsx_root, "Mods", module, scope, level, kind, "_merged.lsx")
-                if not os.path.exists(path):
-                    continue
-                text = open(path, encoding="utf-8-sig").read()
-                for node in re.split(r'(?=<node id="GameObjects">)', text)[1:]:
-                    attrs = dict(ATTR.findall(node.split("<children>", 1)[0]))
-                    t = re.search(r'<node id="Transform">(.*?)</node>', node, re.S)
-                    tr = dict(ATTR.findall(t.group(1))) if t else {}
-                    if "Position" not in tr or "MapKey" not in attrs:
+def convert(exe, work, lsx):
+    if os.path.isdir(lsx):
+        shutil.rmtree(lsx)
+    if os.path.isdir(work) and any(f.endswith(".lsf") for _, _, fs in os.walk(work) for f in fs):
+        divine(exe, "-a", "convert-resources", "-s", work, "-d", lsx, "-i", "lsf", "-o", "lsx")
+
+
+# ------------------------------------------------------------------------ levels
+
+def read_level(lsx_roots, level, scopes=("Globals", "Levels")):
+    """Objects and tile constructions of one (sub-)level in its own coordinates, later modules
+    overriding earlier ones (same MapKey): (objects by key, [(construction name, tiles)])."""
+    by_key, constructions = {}, {}
+    for root in lsx_roots:
+        for module in MODULES:
+            for scope in scopes:
+                for kind in KINDS:
+                    path = os.path.join(root, "Mods", module, scope, level, kind, "_merged.lsx")
+                    if not os.path.exists(path):
                         continue
-                    by_key[attrs["MapKey"]] = {
-                        "name": attrs.get("Name", ""),
-                        "key": attrs["MapKey"],
-                        "tpl": attrs.get("TemplateName", ""),
-                        "kind": kind,
-                        "scope": scope,
-                        "pos": [round(float(v), 3) for v in tr["Position"].split()],
-                        "rot": [round(float(v), 5) for v in tr.get("RotationQuat", "0 0 0 1").split()],
-                    }
-    return sorted(by_key.values(), key=lambda o: (o["kind"], o["name"], o["key"]))
+                    for node in gamefiles.game_objects(path):
+                        if kind == "TileConstructions":
+                            a = {x.get("id"): x.get("value") for x in node.findall("attribute")}
+                            if "MapKey" in a:
+                                constructions[a["MapKey"]] = (a.get("Name", ""), gamefiles.read_tiles(node))
+                            continue
+                        rec = gamefiles.read_object(node, kind, scope)
+                        if rec:
+                            by_key[rec["key"]] = rec
+    return by_key, list(constructions.values())
 
+
+def sublevel_folders(lsx_roots, name):
+    return [os.path.join(root, "Mods", m, "Levels", name) for root in lsx_roots for m in MODULES
+            if os.path.isdir(os.path.join(root, "Mods", m, "Levels", name))]
+
+
+class Extents:
+    """How far things reach: the bounds of the visual each template and each tile is drawn with."""
+
+    def __init__(self, roots, bounds, tile_visuals):
+        self.roots, self.bounds, self.tile_visuals = roots, bounds, tile_visuals
+
+    def of_template(self, template):
+        return self.bounds.get(gamefiles.visual_of(template, self.roots))
+
+    def of_tile(self, tile):
+        return self.bounds.get(self.tile_visuals.get(tile.guid, ""))
+
+
+def build_level(level, lsx_roots, templates, sub_cache, grid=None, extents=None):
+    """Every object and tile of a main level and of the sub-levels placed into it, in world coordinates."""
+    main, constructions = read_level(lsx_roots, level)
+    objects = list(main.values())
+    ext = extents.of_tile if extents else (lambda tile: None)
+    tiles = [gamefiles.tile_record(name, t, ext=ext(t)) for name, ts in constructions for t in ts]
+    report = []
+    missing = set()
+
+    def add_placements(records, outer, via_prefix, later, depth):
+        for rec in records:
+            if rec["kind"] != "LevelTemplates":
+                continue
+            tpl = templates.get(rec["tpl"])
+            if not tpl:
+                continue
+            rec["sub"] = tpl["sub"]
+            loaded = rec.get("loaded", tpl["loaded"])
+            if outer is None:
+                placement = (tuple(rec["pos"]), tuple(rec["rot"]), rec.get("scale", 1.0))
+            else:
+                p, r, s = gamefiles.place(outer, rec["pos"], rec["rot"], rec.get("scale", 1.0))
+                placement = (p, r, s)
+            via = rec["name"] if not via_prefix else via_prefix + "/" + rec["name"]
+            is_later = later or not loaded
+            if tpl["sub"] not in sub_cache:
+                missing.add(tpl["sub"])
+                continue
+            sub_objects, sub_constructions = sub_cache[tpl["sub"]]
+            placed = [gamefiles.placed(o, placement, via, tpl["sub"], is_later) for o in sub_objects.values()]
+            objects.extend(placed)
+            for name, ts in sub_constructions:
+                for tile in ts:
+                    p, r, s = gamefiles.place(placement, tile.pos, tile.rot, tile.scale)
+                    t = gamefiles.tile_record(name, tile, p, r, s, ext=ext(tile))
+                    t["via"] = via
+                    if is_later:
+                        t["later"] = True
+                    tiles.append(t)
+            report.append((via, tpl["sub"], is_later, placed))
+            if depth < MAX_DEPTH:
+                add_placements(list(sub_objects.values()), placement, via, is_later, depth + 1)
+
+    add_placements(list(main.values()), None, "", False, 1)
+    if extents:
+        for o in objects:
+            if o["kind"] in ("Items", "Scenery"):
+                bounds = extents.of_template(o["tpl"])
+                if bounds:
+                    o["ext"] = bounds
+    fit = placement_fit(grid, report) if grid else {}
+    return objects, tiles, report, missing, fit
+
+
+def placement_fit(grid, report):
+    """How well each placed sub-level sits on the main level's navigation grid: the share of its
+    characters and floor items that stand within 0.3 m of a surface. A sub-level placed with a
+    wrong transform would float or sink everywhere."""
+    out = {}
+    for via, sub, later, placed in report:
+        standing = [o for o in placed if o["kind"] in ("Characters", "Items")]
+        if len(standing) < 5:
+            continue
+        hits = 0
+        for o in standing:
+            x, y, z = o["pos"]
+            if any(abs(h - y) <= 0.3 for h, _flags in grid.surfaces(x, z)):
+                hits += 1
+        out[via] = (sub, len(standing), hits / len(standing), later)
+    return out
+
+
+def needed_sublevels(lsx_roots, levels, templates, known):
+    """The sub-levels the given (sub-)levels place, that are not read yet."""
+    out = set()
+    for level in levels:
+        for root in lsx_roots:
+            for module in MODULES:
+                for scope in ("Globals", "Levels"):
+                    path = os.path.join(root, "Mods", module, scope, level, "LevelTemplates", "_merged.lsx")
+                    if not os.path.exists(path):
+                        continue
+                    for node in gamefiles.game_objects(path):
+                        a = {x.get("id"): x.get("value") for x in node.findall("attribute")}
+                        tpl = templates.get(a.get("TemplateName", ""))
+                        if tpl and tpl["sub"] not in known:
+                            out.add(tpl["sub"])
+    return out
+
+
+# ------------------------------------------------------------------------- story
 
 def vanilla_waypoints(work, loca):
     """DB_WaypointInfo facts of the game's story, with the waypoint names the map shows."""
@@ -173,6 +303,23 @@ def vanilla_waypoints(work, loca):
     return sorted(rows.values(), key=lambda r: (r["group"], r["id"]))
 
 
+def goals(work):
+    for path in sorted(glob.glob(os.path.join(work, "Mods", "*", "Story", "RawFiles", "Goals", "*.txt"))):
+        module = os.path.relpath(path, os.path.join(work, "Mods")).split(os.sep)[0]
+        yield module, os.path.splitext(os.path.basename(path))[0], open(path, encoding="utf-8", errors="replace").read()
+
+
+# -------------------------------------------------------------------------- main
+
+def write_json(path, data, compact=False):
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        if compact:
+            json.dump(data, fh, separators=(",", ":"), ensure_ascii=False)
+        else:
+            json.dump(data, fh, indent=1, ensure_ascii=False)
+        fh.write("\n")
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser()
@@ -180,6 +327,7 @@ def main():
     ap.add_argument("--divine", default=None, help="path to LSLib Divine.exe")
     ap.add_argument("--game", default=None, help="BG3 install folder (contains Data\\)")
     ap.add_argument("--cache", default=CACHE)
+    ap.add_argument("--keep-work", action="store_true", help="keep the converted game files (tools/.cache/work_lsx*)")
     args = ap.parse_args()
 
     if args.levels:
@@ -201,8 +349,9 @@ def main():
     data = os.path.join(game, "Data")
     cache = os.path.abspath(args.cache)
     work = os.path.join(cache, "work")
-    if os.path.isdir(work):
-        shutil.rmtree(work)
+    lsx = os.path.join(cache, "work_lsx")
+    for d in glob.glob(os.path.join(cache, "work*")):
+        shutil.rmtree(d, ignore_errors=True)
     os.makedirs(work)
     print("Divine:", exe)
     print("Game  :", game)
@@ -218,20 +367,55 @@ def main():
     paks += sorted(hotfixes.values(), key=natural_key)
     paks = [p for p in dict.fromkeys(paks) if os.path.exists(p)]
 
+    # Pass 1: the main levels, the templates that name their sub-levels, the story and the names.
     names = "|".join(re.escape(lv) for lv in levels)
     expr = ("^Mods/[^/]+/(Globals|Levels)/(%s)/(%s)/_merged\\.lsf$" % (names, "|".join(KINDS))
             + "|^Mods/[^/]+/Levels/(%s)/Ai/aigrid\\.data$" % names
             + "|^Mods/[^/]+/Localization/Waypointshrines[^/]*\\.lsf$"
-            + "|^Mods/[^/]+/Story/RawFiles/Goals/[^/]*Waypoints[^/]*\\.txt$")
-    for pak in paks:
-        print("Extracting from", os.path.basename(pak))
-        divine(exe, "-a", "extract-package", "-s", pak, "-d", work, "-x", expr, "--use-regex")
+            + "|^Mods/[^/]+/Story/RawFiles/Goals/[^/]+\\.txt$"
+            + "|^Public/(%s)/RootTemplates/_merged\\.lsf$" % "|".join(TEMPLATE_MODULES)
+            + "|^Public/(%s)/Content/.*_merged\\.lsf$" % "|".join(TEMPLATE_MODULES))
+    print("Extracting the levels, the templates, the visuals and the story...")
+    extract(exe, paks, work, expr)
+    print("Converting (LSF -> LSX)...")
+    convert(exe, work, lsx)
+    lsx_roots = [lsx]
 
-    print("Converting level files (LSF -> LSX)...")
-    lsx = os.path.join(cache, "work_lsx")
-    if os.path.isdir(lsx):
-        shutil.rmtree(lsx)
-    divine(exe, "-a", "convert-resources", "-s", work, "-d", lsx, "-i", "lsf", "-o", "lsx")
+    roots = {}
+    for module in TEMPLATE_MODULES:
+        path = os.path.join(lsx, "Public", module, "RootTemplates", "_merged.lsx")
+        if os.path.exists(path):
+            roots.update(gamefiles.root_templates(path))
+    templates = {k: v for k, v in roots.items() if "sub" in v}
+    print(f"  {len(roots)} root templates, {len(templates)} of them level templates")
+
+    print("Reading how far things reach (the bounds of every visual and tile)...")
+    bounds, tile_visuals = {}, {}
+    for module in TEMPLATE_MODULES:
+        for path in sorted(glob.glob(os.path.join(lsx, "Public", module, "Content", "**", "_merged.lsx"), recursive=True)):
+            b, t = gamefiles.bank(path)
+            bounds.update(b)
+            tile_visuals.update(t)
+    extents = Extents(roots, bounds, tile_visuals)
+    print(f"  {len(bounds)} visuals, {len(tile_visuals)} tiles")
+
+    # Pass 2 and on: the sub-levels those levels place, and the ones placed inside them.
+    sub_cache = {}
+    wanted = needed_sublevels(lsx_roots, levels, templates, set(levels))
+    depth = 1
+    while wanted and depth <= MAX_DEPTH:
+        print(f"Extracting {len(wanted)} sub-levels (depth {depth})...")
+        sub_work, sub_lsx = os.path.join(cache, f"work{depth}"), os.path.join(cache, f"work_lsx{depth}")
+        os.makedirs(sub_work, exist_ok=True)
+        names = "|".join(re.escape(s) for s in sorted(wanted))
+        extract(exe, paks, sub_work, "^Mods/[^/]+/Levels/(%s)/(%s)/_merged\\.lsf$" % (names, "|".join(KINDS)))
+        convert(exe, sub_work, sub_lsx)
+        lsx_roots.append(sub_lsx)
+        for sub in sorted(wanted):
+            sub_cache[sub] = read_level(lsx_roots, sub, scopes=("Levels",))
+        known = set(levels) | set(sub_cache)
+        wanted = needed_sublevels(lsx_roots, sorted(sub_cache), templates, known)
+        depth += 1
 
     print("Reading the English waypoint names...")
     loca_dir = os.path.join(work, "loca")
@@ -243,42 +427,61 @@ def main():
     loca = {m.group(1): html.unescape(m.group(2)).strip()
             for m in re.finditer(r'<content contentuid="([^"]+)" version="\d+">(.*?)</content>', text, re.S)}
 
-    # Goals are text: copy them next to the converted resources so both are read from one tree.
+    # Goals are text: read them from the extracted tree, next to the converted name keys.
     for path in glob.glob(os.path.join(work, "Mods", "*", "Story", "RawFiles", "Goals", "*.txt")):
         dest = os.path.join(lsx, os.path.relpath(path, work))
         os.makedirs(os.path.dirname(dest), exist_ok=True)
         shutil.copy2(path, dest)
     rows = vanilla_waypoints(lsx, loca)
-    with open(os.path.join(cache, "vanilla_waypoints.json"), "w", encoding="utf-8", newline="\n") as fh:
-        json.dump(rows, fh, indent=1, ensure_ascii=False)
-        fh.write("\n")
+    write_json(os.path.join(cache, "vanilla_waypoints.json"), rows)
     print(f"  {len(rows)} of the game's own waypoints")
+    story = gamefiles.story(goals(lsx))
+    write_json(os.path.join(cache, "story.json"), story)
+    print("  story: %d waypoints and %d groups locked or unlocked somewhere, %d travel zones" % (
+        len(story["waypoints"]), len(story["groups"]), len(story["zones"])))
 
+    manifest_levels = {}
     for lv in levels:
         folder = os.path.join(cache, "levels", lv)
         os.makedirs(folder, exist_ok=True)
-        grid = None
+        grid_path = None
         for module in reversed(MODULES):  # the newest module's grid is the one the game uses
             p = os.path.join(work, "Mods", module, "Levels", lv, "Ai", "aigrid.data")
             if os.path.exists(p):
-                grid = p
+                grid_path = p
                 break
-        if not grid:
+        if not grid_path:
             print(f"  {lv}: no navigation grid found, skipped")
             continue
-        shutil.copy2(grid, os.path.join(folder, "aigrid.data"))
-        objects = index_objects(lsx, lv)
-        with open(os.path.join(folder, "objects.json"), "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(objects, fh, separators=(",", ":"))
-        print(f"  {lv}: {len(objects)} objects, navigation grid from {os.path.relpath(grid, work)}")
+        shutil.copy2(grid_path, os.path.join(folder, "aigrid.data"))
+        grid = NavGrid(grid_path)
+        objects, tiles, report, missing, fit = build_level(lv, lsx_roots, templates, sub_cache, grid, extents)
+        objects.sort(key=lambda o: (o["kind"], o.get("via", ""), o["name"], o["key"]))
+        write_json(os.path.join(folder, "objects.json"), objects, compact=True)
+        write_json(os.path.join(folder, "tiles.json"), tiles, compact=True)
+        subs = sorted({sub for _via, sub, _later, _placed in report})
+        solid = [o for o in objects if o["kind"] in ("Items", "Scenery")]
+        print(f"  {lv}: {len(objects)} objects ({sum(1 for o in objects if 'via' in o)} from {len(subs)} sub-levels), "
+              f"{len(tiles)} tiles, navigation grid from {os.path.relpath(grid_path, work)}")
+        print(f"    extents known for {sum(1 for o in solid if 'ext' in o)} of {len(solid)} items and props, "
+              f"{sum(1 for t in tiles if 'ext' in t)} of {len(tiles)} tiles")
+        if missing:
+            print(f"    placed but not found (no files): {', '.join(sorted(missing))}")
+        poor = sorted((v, f) for v, f in fit.items() if f[2] < 0.5 and f[1] >= 10 and not f[3])
+        for via, (sub, n, share, _later) in poor:
+            print(f"    note: only {share:.0%} of the {n} characters and items of {via} ({sub}) stand on the floor")
+        manifest_levels[lv] = {
+            "objects": len(objects), "tiles": len(tiles), "sublevels": subs,
+            "fit": {via: {"sub": f[0], "standing": f[1], "on_floor": round(f[2], 2), "later": f[3]} for via, f in sorted(fit.items())},
+        }
 
     hotfix = [os.path.basename(p)[:-4] for p in paks if "ot" in os.path.basename(p).lower() and "ix" in os.path.basename(p).lower()]
-    with open(os.path.join(cache, "manifest.json"), "w", encoding="utf-8", newline="\n") as fh:
-        json.dump({"game": game, "packages": [os.path.basename(p) for p in paks], "latest_hotfix": hotfix[-1] if hotfix else None,
-                   "levels": levels}, fh, indent=1)
-        fh.write("\n")
-    shutil.rmtree(work, ignore_errors=True)
-    shutil.rmtree(lsx, ignore_errors=True)
+    write_json(os.path.join(cache, "manifest.json"), {
+        "version": CACHE_VERSION, "game": game, "packages": [os.path.basename(p) for p in paks],
+        "latest_hotfix": hotfix[-1] if hotfix else None, "levels": manifest_levels})
+    if not args.keep_work:
+        for d in glob.glob(os.path.join(cache, "work*")):
+            shutil.rmtree(d, ignore_errors=True)
     print("Done. Cache:", cache)
 
 
