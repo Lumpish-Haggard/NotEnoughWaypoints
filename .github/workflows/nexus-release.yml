@@ -14,9 +14,9 @@ name: Release to Nexus Mods
 #  * the repository secret NEXUSMODS_API_KEY, a personal API key from
 #    https://www.nexusmods.com/settings/api-keys (Settings > Secrets and variables > Actions);
 #  * NEXUS_MOD_ID and NEXUS_FILE_ID below. Nexus can only add versions to a file that
-#    exists, so the mod page and its main file are created by hand with the first
-#    release. Then copy both IDs from the mod's Files tab with "Advanced" switched on
-#    (under the "API" heading). Until they are set, every run only checks and sends nothing.
+#    exists, so the mod page and its main file were created by hand with 1.0.0, and both
+#    IDs copied from the mod's Files tab with "Advanced" switched on (under the "API"
+#    heading). If they are ever emptied, every run only checks and sends nothing.
 #
 # Runs on its own when a release is published (not for pre-releases). From the
 # Actions tab it can also be run by hand:
@@ -48,9 +48,8 @@ concurrency:
 env:
   NEXUS_API: "https://api.nexusmods.com/v3"
   # From the mod's Files tab with "Advanced" switched on (under the "API" heading).
-  # Empty until the first version has been uploaded by hand.
-  NEXUS_MOD_ID: ""    # Unique Mod ID
-  NEXUS_FILE_ID: ""   # File ID of the main file
+  NEXUS_MOD_ID: "14920716413001"   # Unique Mod ID
+  NEXUS_FILE_ID: "8403930"         # File ID of the main file
   # Nexus allows only letters, digits, spaces and _ ' ( ) . - in a file name, at most 50 characters.
   NEXUS_DISPLAY_NAME: "Not Enough Waypoints"
   # At most 255 characters (enforced by Nexus from 2026-11-23).
