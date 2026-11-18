@@ -3,7 +3,8 @@ name: Release to Nexus Mods
 # Publishes a release on Nexus Mods:
 #  1. the zip attached to the GitHub release, as a new version of the mod's main
 #     file, with that version's CHANGELOG.md section;
-#  2. the mod page text in .github/nexus/ (description and summary), when it
+#  2. the uninstaller's zip (from 1.2), as a new version of its optional file;
+#  3. the mod page text in .github/nexus/ (description and summary), when it
 #     changed since the previous release.
 #
 # It never builds anything: packing needs LSLib, and the zip that goes out must be
@@ -17,6 +18,9 @@ name: Release to Nexus Mods
 #    exists, so the mod page and its main file were created by hand with 1.0.0, and both
 #    IDs copied from the mod's Files tab with "Advanced" switched on (under the "API"
 #    heading). If they are ever emptied, every run only checks and sends nothing.
+#  * NEXUS_UNINSTALLER_FILE_ID, the same way: the uninstaller's first version is uploaded
+#    by hand as an optional file, then its File ID is copied in. Until then its zip is
+#    checked but not sent, and the summary says so.
 #
 # Runs on its own when a release is published (not for pre-releases). From the
 # Actions tab it can also be run by hand:
@@ -53,7 +57,11 @@ env:
   # Nexus allows only letters, digits, spaces and _ ' ( ) . - in a file name, at most 50 characters.
   NEXUS_DISPLAY_NAME: "Not Enough Waypoints"
   # At most 255 characters (enforced by Nexus from 2026-11-23).
-  NEXUS_FILE_DESCRIPTION: "Six new waypoints in Acts 1 to 3. No other mods needed. Install with BG3 Mod Manager or Vortex."
+  NEXUS_FILE_DESCRIPTION: "Six new waypoints in Acts 1 to 3. No other mods needed. Install with BG3 Mod Manager or Vortex. To take it out of a save, use the uninstaller under Optional files."
+  # The uninstaller: an optional file of its own (its first version uploaded by hand).
+  NEXUS_UNINSTALLER_FILE_ID: "8411976"   # File ID of the uninstaller's optional file
+  NEXUS_UNINSTALLER_DISPLAY_NAME: "Not Enough Waypoints Uninstaller"
+  NEXUS_UNINSTALLER_DESCRIPTION: "Takes the waypoints of Not Enough Waypoints out of a save, so that the mod can be removed. Load the save once with this in place of Not Enough Waypoints, save, then remove this as well."
   PAGE_DIR: ".github/nexus"
 
 jobs:
@@ -135,6 +143,21 @@ jobs:
           ls -l "upload/$file"
           sha256sum "upload/$file"
           echo "file=upload/$file" >> "$GITHUB_OUTPUT"
+          # From 1.2 every release has the uninstaller too, built and tested with the mod.
+          if [ -d Mods/NotEnoughWaypointsUninstaller ]; then
+            un="NotEnoughWaypointsUninstaller-$VERSION.0.zip"
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$un" --dir upload || {
+              echo "::error::Release $TAG has no asset named $un. Attach the uninstaller's zip as well."
+              exit 1
+            }
+            unzip -Z1 "upload/$un" > un-listing.txt
+            cat un-listing.txt
+            for expected in NotEnoughWaypointsUninstaller.pak info.json; do
+              grep -qx "$expected" un-listing.txt || { echo "::error::$un does not contain $expected"; exit 1; }
+            done
+            sha256sum "upload/$un"
+            echo "uninstaller=upload/$un" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Changelog for this version
         id: notes
@@ -214,6 +237,23 @@ jobs:
           description: ${{ env.NEXUS_FILE_DESCRIPTION }}
           category: main
           update_mod_version: true
+          archive_existing_version: false
+          changelog: ${{ steps.notes.outputs.text }}
+
+      - name: Upload the uninstaller to Nexus Mods
+        id: nexus_uninstaller
+        if: steps.plan.outputs.file == 'true' && steps.plan.outputs.dry != 'true' && steps.zip.outputs.uninstaller != '' && env.NEXUS_UNINSTALLER_FILE_ID != ''
+        uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2 # v1.0.0-beta.11
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          mod_id: ${{ env.NEXUS_MOD_ID }}
+          file_id: ${{ env.NEXUS_UNINSTALLER_FILE_ID }}
+          filename: ${{ steps.zip.outputs.uninstaller }}
+          version: ${{ steps.plan.outputs.version }}
+          display_name: ${{ env.NEXUS_UNINSTALLER_DISPLAY_NAME }}
+          description: ${{ env.NEXUS_UNINSTALLER_DESCRIPTION }}
+          category: optional
+          update_mod_version: false
           archive_existing_version: false
           changelog: ${{ steps.notes.outputs.text }}
 
@@ -300,6 +340,8 @@ jobs:
           CONFIGURED: ${{ steps.plan.outputs.configured }}
           FILE: ${{ steps.zip.outputs.file }}
           VERSION_ID: ${{ steps.nexus.outputs.version_id }}
+          UNINSTALLER: ${{ steps.zip.outputs.uninstaller }}
+          UNINSTALLER_VERSION_ID: ${{ steps.nexus_uninstaller.outputs.version_id }}
           PAGE_SEND: ${{ steps.page.outputs.send }}
           PAGE_WHY: ${{ steps.page.outputs.why }}
           PAGE_RESULT: ${{ steps.pageupdate.outputs.result }}
@@ -311,6 +353,10 @@ jobs:
             [ "$DRY" = "true" ] && echo "- Dry run: nothing was sent."
             if [ -n "$VERSION_ID" ]; then echo "- File uploaded: ${FILE} (Nexus file version id $VERSION_ID)"
             elif [ -n "$FILE" ]; then echo "- File checked, not uploaded: ${FILE}"; fi
+            if [ -n "$UNINSTALLER_VERSION_ID" ]; then echo "- Uninstaller uploaded: ${UNINSTALLER} (Nexus file version id $UNINSTALLER_VERSION_ID)"
+            elif [ -n "$UNINSTALLER" ] && [ -z "$NEXUS_UNINSTALLER_FILE_ID" ]; then
+              echo "- Uninstaller checked, not uploaded: ${UNINSTALLER}. Upload it by hand as an optional file once, then set NEXUS_UNINSTALLER_FILE_ID."
+            elif [ -n "$UNINSTALLER" ]; then echo "- Uninstaller checked, not uploaded: ${UNINSTALLER}"; fi
             if [ -n "$PAGE_RESULT" ]; then echo "- Page: $PAGE_RESULT ($PAGE_WHY). The text that was live before is in the nexus-page-before artifact."
             elif [ "$PAGE_SEND" = "true" ]; then echo "- Page: would be updated ($PAGE_WHY), but was not."
             elif [ -n "$PAGE_WHY" ]; then echo "- Page: left alone ($PAGE_WHY)."; fi

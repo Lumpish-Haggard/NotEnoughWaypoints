@@ -28,6 +28,7 @@ from navgrid import CELL, NavGrid
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MOD = "NotEnoughWaypoints"
+UNINSTALLER = "NotEnoughWaypointsUninstaller"   # the separate mod that takes the waypoints out of a save
 DATA_FILE = os.path.join(ROOT, "waypoints.json")
 CACHE = os.path.join(ROOT, "tools", ".cache")
 CACHE_VERSION = 3   # the layout extract_game_data.py writes: 2 added sub-levels, tiles, trigger volumes and

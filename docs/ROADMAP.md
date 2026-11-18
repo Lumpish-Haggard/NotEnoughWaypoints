@@ -45,9 +45,9 @@ And what it confirmed:
 | Version | Theme | What it brings |
 |---|---|---|
 | **1.1** (released) | Where it belongs | Tools that see the whole level and how far everything reaches; five waypoints moved, four of them onto a wall as the game does; moves that reach existing saves; every waypoint seen in game (still to come) |
-| **1.2** | Finishing touches | Runes on walls built of props (inside Moonrise's front doors), arriving facing into the place, the patch-day check |
-| **1.3** | Every language | The names in all of the game's languages, in the game's own words |
-| **1.4** | Safe to remove | A way to take the waypoints out of a save before removing the mod |
+| **1.2** (released) | Safe to remove | The uninstaller, which takes the waypoints out of a save before the mod is removed (moved up from 1.4); a check that compiles the story with the game's; a tool that shows what a save holds of the mod |
+| **1.3** | Finishing touches | Runes on walls built of props (inside Moonrise's front doors), arriving facing into the place, the patch-day check |
+| **1.4** | Every language | The names in all of the game's languages, in the game's own words |
 | **Later** | More waypoints | New places, placed and reviewed the same way |
 
 ## 1.1: where it belongs
@@ -61,24 +61,34 @@ And what it confirmed:
 
 Where this stands: released as 1.1.0, with everything above but the check in game. That is an exception to the sixth principle: the new places pass every check of the tools, but nobody has looked at them in the game yet. If one of them looks wrong, a 1.1 update moves it, in existing saves too.
 
-## 1.2: finishing touches
+One part has been seen at work since, in the files of a save rather than on screen: a playthrough that took up the mod at 1.0 and was loaded with 1.1 in Act 1 has the shrines of the Arcane Tower and the Shattered Sanctum at their new places, and the story's record that it moved them (`DB_NEW_WAYP_Placed`). How the runes look there is still to be seen.
+
+## 1.2: safe to remove
+
+Moved up from 1.4: a mod that cannot be taken out of a save again asks a lot of a player trying it out.
+
+- **What a save keeps.** Read from a save made with the mod (`tools/inspect_save.py`). In the story: the six waypoints in the game's list of waypoints (`DB_WaypointInfo`), who unlocked each (`DB_WaypointUnlocked`), the Arcane Tower in Sovereign Glut's list of Underdark waypoints, and the mod's own goal and records. Outside it: the travel list of each party (the waypoints it unlocked), the game's list of waypoints registered for the map, and the invisible shrines and arrival points, whose templates are the mod's own objects. The runes and boulders belong to the levels, not to the save.
+- **What removing the mod alone leaves.** The story keeps its facts, and a party keeps an unlocked waypoint in its travel list: listed without its name, and leading nowhere, since the story's travel rule needs the arrival point. It goes when the story locks its act.
+- **The uninstaller.** A second mod with a story script and nothing else, loaded in place of the mod for one save. When the save is loaded (`SavegameLoaded`, where the game applies its own savegame patches) it locks every waypoint of the mod through the game's own procedure (`PROC_LockWaypointForAll`, as when an act ends), which takes it out of every party's travel list, and then takes the waypoints out of the story: `DB_WaypointInfo`, any unlock records left, Sovereign Glut's list, and the story's record of which waypoint an arrival point belongs to. It finds the waypoints by id, from its own list and from the list the mod keeps in the save, never by object, so it works with the mod's objects gone. It does nothing while the mod's own story is running: the mod would lose its waypoints for good, since its story adds them only when it first starts in a save.
+- **Checked against the game's story.** `tools/check_story.py` compiles it, and the mod's own story, with the game's: on its own, in place of the mod, and loaded together with it.
+- **What stays.** The game has no call to take a waypoint off its list of waypoints registered for the map, so the mod's ids stay on that list, with nothing behind them.
+- **Seen in game** (still to come). A save from Act 1 with the Hollow unlocked, loaded with the uninstaller in place of the mod: the Hollow leaves the travel list, and the next save holds nothing of the mod (`inspect_save.py`). Then without the uninstaller: the save loads and plays on. Then the mod put back: its waypoints return, to be unlocked again.
+
+Where this stands: released as 1.2.0, with everything above but the check in game, an exception to the sixth principle as in 1.1. If the uninstaller leaves anything behind, `inspect_save.py` on a save made after it shows what, and a 1.2 update takes that out too.
+
+## 1.3: finishing touches
 
 - **Walls built of props.** Moonrise Towers and the Open Hand Temple are built mostly of large props rather than wall tiles, so the checks can carry a rune only onto the few tile walls they have: Moonrise's rune is east of the bazaar, not inside the front doors where the game would put it. Reading the meshes of those props would show their faces, and let the rune go where it belongs.
 - **Arriving facing into the place.** Several of the game's arrival points are turned; ours all face the same way. If that decides which way the party faces on arrival, ours will face the traders and doors they are there for.
 - **The Hollow's rock.** In the wild the game often puts the rune on a rock that is already there. Whether the Hollow keeps the Blighted Village boulder or moves its rune onto the ledge behind it is decided once the wall runes have been seen in game.
 - **Patch-day check.** After a game patch, the tools compare what the story now does with the game's waypoints that ours follow, and say so when a lock or unlock was added or removed.
 
-## 1.3: every language
+## 1.4: every language
 
 - **First, look.** Check in game what a player with the game in another language sees in the list today.
 - **The game's own names.** Four of the names are places the game already names in every language. Using the game's own text for them gives every player the name the game uses for that place, in their language.
 - **The other two**, Underdark - Arcane Tower and Moonrise Towers - Main Floor, are put together in each language from the game's own words: the "Underdark - " the game puts before its own Underdark waypoints, and its names for the Arcane Tower and Moonrise Towers. "Main Floor" needs a translator, or another name.
 - **Until then**, the English names ship for every language, so that no list shows an empty line.
-
-## 1.4: safe to remove
-
-- Removing the mod from a save that has used it leaves its waypoints on the map without working. A small separate file, loaded in place of the mod for one save, would lock the waypoints and take them out of the story; after that save the mod can be removed cleanly.
-- Needs testing in game first: whether a locked waypoint whose objects are gone leaves anything behind.
 
 ## Later: more waypoints
 
@@ -88,7 +98,8 @@ Ideas are welcome now, through the [waypoint idea form](../../../issues/new/choo
 
 - **Report what looks wrong.** A boulder in the way, a rune that is not whole on its wall or its rock, a party arriving somewhere awkward: use the placement form and attach a screenshot.
 - **Look at a waypoint in game.** None of the five places 1.1 moved to has been seen in game yet. A screenshot of a rune on its wall, from the front and at an angle, settles the most: whether it is whole, and whether any of it shows on the floor, on furniture or on the far side of the wall.
-- **Translate the two names** the game has no words for, once 1.3 starts.
+- **Translate the two names** the game has no words for, once 1.4 starts.
+- **Try the uninstaller** on a copy of a save: say what the travel list and the map show afterwards.
 
 ## Notes for contributors
 
@@ -102,3 +113,8 @@ Verified against the Patch 8 Hotfix 10 game files, for anyone picking up the ite
 - Larian moves items and triggers in existing saves with `TeleportToPosition` and `ToTransform` in the `BG3_*SavegamePatches` goals, applied when the level they are in is loaded.
 - Runes on walls: Moonrise Towers uses the decal template's own size (3 by 1 by 3 m) at 0.9 scale, 1.31 m above its shrine; Baldur's Gate and the Lower City Central Wall use a box 3 m wide, 3 m high and 8 to 10 cm deep on the wall's face. The Blighted Village rune on its boulder is 60 cm deep. Where the tools can measure a wall's face behind one of the game's runes (six of them), it lies 6 to 52 cm behind the rune's centre.
 - How far things reach: visual resources (`VisualBank` in the banks under `Public/*/Content/`) have `BoundsMin` and `BoundsMax`; templates name their visual (`VisualTemplate`, inherited through `ParentTemplateId`); tiles find theirs through their tile set (`TileSetBank`: `TileGUID` to `VisualGUID`). A stretchable tile is stretched along its length only.
+- A save (`.lsv`, a package Divine extracts) holds `Globals.lsf`, `LevelCache/<level>.lsf`, `meta.lsf` and `StorySave.bin`. `StorySave.bin` is the story with all its facts, which StoryDecompiler reads once it is named `.osi`; its debug log lists every database with its facts, and every goal with its state (flags 0 running, 2 waiting to start, 7 completed). `Globals.lsf` has the waypoints registered for the map (region `RegisteredWaypoints`: id and object), the global items and triggers with the template each was made from, and most other state in a binary block (`NewAge`), where each party's travel list is a `game.party.v0.WaypointsComponent`: the id, the arrival point and the level of each waypoint the party unlocked.
+- The engine's waypoint calls are `RegisterWaypoint(id, item)`, `UnlockWaypoint(id, trigger, character)` and `LockWaypoint(id, character)`; there is none to unregister a waypoint. The game hides a registered shrine with `SetOnStage` (Gale's chapel waypoint) rather than unregistering it. Unlocks are kept per party.
+- The game applies its savegame patches on `SavegameLoaded()`. A goal without a parent starts with the story, also when a mod brings it into an existing save, and runs its INIT section then. The game's savegame patches keep a database that no goal uses any more by naming it in an INIT section (`NOT DB_...`), "so the transfer can happen to the new DBs"; the uninstaller keeps the mod's list of its waypoints the same way. `SysIsActive(goal)` tells whether a goal is running; the game negates system queries too (`NOT SysStatus(...)`, `NOT SysCount(...)`).
+- The game ships no story header (`story_header.div`), but its compiled story (`Mods/GustavX/Story/story.div.osi`) lists every engine function with its parameters and types. LSLib's StoryCompiler needs every alias type to name an intrinsic type (`ITEMROOT` aliases `ROOT` in the game), and cannot read the enum constants of the game's goals (`DEATHTYPE.Chasm`), which the compiled story holds as numbers. With both taken care of it parses all but two of the game's 944 goals, and reports about a hundred differences of its own on them.
+- Sovereign Glut's list of Underdark waypoints is spelt `DB_UND_BroodingSpovereign_UnderdarkWaypoints` in the game; the story check catches the "corrected" spelling.

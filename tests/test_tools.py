@@ -218,6 +218,7 @@ class Generated(unittest.TestCase):
     def test_version_decoding(self):
         self.assertEqual(build_waypoints.version_of(36028797018963968), "1.0.0.0")
         self.assertEqual(build_waypoints.version_of(36169534507319296), "1.1.0.0")
+        self.assertEqual(build_waypoints.version_of(36310271995674624), "1.2.0.0")
 
 
 if __name__ == "__main__":

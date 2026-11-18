@@ -16,7 +16,7 @@
 </div>
 
 > [!NOTE]
-> **Version 1.1 moved five of the six waypoints** to where they were meant to be, four of them onto a wall as the game does indoors, and moves them in saves made with 1.0 too. The new places pass every check of the tools, which now also read the sub-levels the game builds its places from and how far everything in them reaches, but have not been seen in game yet. If a waypoint floats, clips into something, stands in the way or its rune is not on its wall, please [report it](../../issues/new/choose) with a screenshot. What comes next is in [what is planned](docs/ROADMAP.md).
+> **Version 1.2 makes the mod safe to remove.** A small second file, *Not Enough Waypoints Uninstaller*, takes the waypoints out of a save, so that the mod can be removed in the middle of a playthrough: see [Removing the mod](#removing-the-mod). It was designed from a save made with the mod and checked against the game's own story, but has not been tried in game yet. Version 1.1 moved five of the six waypoints to where they were meant to be, four of them onto a wall as the game does indoors; those places have not been seen in game yet. If a waypoint floats, clips into something, stands in the way or its rune is not on its wall, please [report it](../../issues/new/choose) with a screenshot. What comes next is in [what is planned](docs/ROADMAP.md).
 
 ---
 
@@ -41,6 +41,7 @@ Each one is built the way the game builds its own in that kind of place: in buil
 - **They follow the story.** Like the game's own waypoints, each is locked with the rest of its act when the story moves on. The Hollow is also locked when the druids seal the Emerald Grove, at the same moment as the game's Grove waypoint, so it never gets you past the barrier.
 - **Sovereign Glut comes along**: the Arcane Tower counts as an Underdark waypoint, so he follows the party there like he does between the game's Underdark waypoints.
 - **New game or existing save**: the story picks the waypoints up when you load, and moves a waypoint that an update moved in a save made before it.
+- **Safe to remove**: the uninstaller takes the waypoints out of a save before you remove the mod, the way the story locks a waypoint when its act ends.
 - **No other mods needed.** The mod adds its own objects, one small story script and the waypoint names; it replaces none of the game's files.
 - **Multiplayer**: waypoints unlock for the whole party, as usual.
 
@@ -59,7 +60,7 @@ Each one is built the way the game builds its own in that kind of place: in buil
    - **Manual**: put `NotEnoughWaypoints.pak` in `%LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods\` and enable it in your mod manager.
 3. Load a save and walk to one of the places above.
 
-Removing it in the middle of a playthrough is not recommended: once a save has the waypoints, they are part of its story. The save still loads without the mod (the game warns that a mod is missing), but waypoints you unlocked may stay on the map without working.
+To take it out of a playthrough again, use the uninstaller: see [Removing the mod](#removing-the-mod).
 
 ## Using the waypoints
 
@@ -68,6 +69,27 @@ Removing it in the middle of a playthrough is not recommended: once a save has t
 | Unlock one | Walk near the rune, or use it. |
 | Travel | Use any waypoint, or the map's travel button, and pick it from the list. |
 | Find one that disappeared | The story locks every waypoint of an act when it leaves that act, and the Hollow when the Emerald Grove is sealed. Locked waypoints leave the list, the game's own included. |
+
+## Removing the mod
+
+A save that has used the mod keeps its waypoints: in the story, and in the travel list of your party once you have unlocked one. Remove only the mod and they stay behind without their names and runes: a waypoint you unlocked stays in the travel list and leads nowhere, until the story locks its act. **Not Enough Waypoints Uninstaller** takes them out first.
+
+1. Download `NotEnoughWaypointsUninstaller-<version>.zip`: on Nexus Mods it is under *Optional files*, on GitHub in the [latest release](../../releases/latest). Install it like the mod.
+2. In your mod manager, turn **Not Enough Waypoints off** and **the uninstaller on** (BG3 Mod Manager: export the load order).
+3. Load your save. The game says that Not Enough Waypoints is missing: carry on. Its waypoints are gone from the travel list.
+4. **Save.**
+5. Turn the uninstaller off. The next time you load that save, the game says once that the uninstaller is missing: carry on, and save again.
+
+From the save in step 4 on, the mod's waypoints are out of that playthrough; only their ids stay in the game's own list of waypoints for the map, which the game has no way to drop. Saves made before it still have the waypoints; to remove the mod from one of those, repeat the steps with it.
+
+| The uninstaller | |
+|---|---|
+| Locks every waypoint of the mod | the way the story locks a waypoint when its act ends: it leaves the travel list of every party that unlocked it |
+| Takes them out of the story | the game's list of waypoints, the record of who unlocked each, and Sovereign Glut's list of Underdark waypoints |
+| Leaves the rest to the game | the shrines, arrival points, runes and boulders come from the mod's files, and go with them |
+| Does nothing while the mod is loaded | it only takes the waypoints out once the mod is gone, so loading both by mistake breaks nothing |
+
+Changed your mind? Turn the mod back on (and the uninstaller off) and load your save: the mod adds its waypoints again, as in a save that never had them. Walk near one to unlock it.
 
 ## How the waypoints were placed
 
@@ -98,6 +120,18 @@ The story locked it, together with the game's own waypoints of that act (or, for
 </details>
 
 <details>
+<summary>I removed the mod and a waypoint is still in the travel list</summary>
+
+It was removed without the uninstaller. Load that save once with the uninstaller (see [Removing the mod](#removing-the-mod), from step 1), save, and remove the uninstaller. It also cleans up a save that the mod was removed from long ago.
+</details>
+
+<details>
+<summary>The uninstaller did nothing</summary>
+
+It only works while Not Enough Waypoints itself is off: with both loaded, it leaves everything as it is. Turn the mod off, check that the uninstaller is on in the exported load order, and load the save again.
+</details>
+
+<details>
 <summary>A waypoint floats, sinks into the floor, blocks a path, or its rune is not on its wall</summary>
 
 Please use the [placement form](../../issues/new/choose) and attach a screenshot.
@@ -110,8 +144,10 @@ On Windows, with BG3 and [LSLib](https://github.com/Norbyte/lslib/releases) (Exp
 ```powershell
 py tools/extract_game_data.py       # read the levels the waypoints are in from your BG3 install (local cache, not committed)
 py tools/build_waypoints.py         # check waypoints.json against the game and regenerate the mod files
+py tools/check_story.py             # compile the story of the mod and the uninstaller with the game's own
 py -m unittest discover -s tests    # run the tests (no game files needed)
-.\pack.ps1                          # dist/NotEnoughWaypoints.pak and dist/NotEnoughWaypoints-<version>.zip
+.\pack.ps1                          # dist/: the pak and the zip of the mod and of the uninstaller
+py tools/inspect_save.py --latest   # what your newest save holds of the mod (reads a copy of it)
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -128,11 +164,15 @@ Mods/NotEnoughWaypoints/          the mod (what goes into the .pak)
   Levels/<level>/Decals/          the runes              )
   Story/RawFiles/Goals/           the story script       )
   Localization/                   waypoint id -> name    )
+Mods/NotEnoughWaypointsUninstaller/   the uninstaller (its own .pak)
+  meta.lsx
+  Story/RawFiles/Goals/           takes the waypoints out of a save (generated from waypoints.json)
 Localization/English/             the English names (generated)
-tools/            game-data extraction, navigation-grid reader, placement checks, survey, generator, release helpers
+tools/            game-data extraction, navigation-grid reader, placement checks, survey, generator,
+                  story check, save inspector, release helpers
 tests/            tests for the tools
 docs/             how a waypoint works, and what is planned
-pack.ps1          build and verify the .pak and the release zip
+pack.ps1          build and verify the two .pak files and their release zips
 ```
 
 ## Contributing
@@ -141,7 +181,7 @@ A misplaced waypoint is the most useful report, with a screenshot. Ideas for new
 
 ## Credits
 
-- **Norbyte**: [LSLib](https://github.com/Norbyte/lslib), which reads and writes the game's files and builds the pak.
+- **Norbyte**: [LSLib](https://github.com/Norbyte/lslib), which reads and writes the game's files, builds the paks, and compiles and reads the story.
 - **Larian Studios**: Baldur's Gate 3.
 
 This project is not affiliated with or endorsed by Larian Studios.

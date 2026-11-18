@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 Nothing yet.
 
+## [1.2.0] - 2026-11-18
+
+The mod is now safe to remove, moved up from 1.4 on the [roadmap](docs/ROADMAP.md). The uninstaller was designed from a save made with the mod and compiled against the game's own story, but has not been tried in game yet: if it leaves anything behind, please report it.
+
+### Added
+- **Not Enough Waypoints Uninstaller**, a small second file that takes the waypoints out of a save so that the mod can be removed in the middle of a playthrough: load the save once with it in place of the mod, save, then remove it too. It locks every waypoint of the mod the way the story locks a waypoint when its act ends, which takes it out of the travel list of every party that unlocked it, and then takes the waypoints out of the story: the game's list of waypoints, the record of who unlocked each, Sovereign Glut's list of Underdark waypoints and the story's travel records. It does nothing while the mod itself is loaded, so loading both by mistake breaks nothing. It also cleans up a save that the mod was removed from without it.
+- `tools/inspect_save.py`: what a save holds of the mod, read from a copy of it: the mods it was made with, the story's goals and facts, the travel list of each party, the waypoints registered for the map, and the shrines and arrival points among its objects. The uninstaller was designed from what it found in a save made with the mod.
+- `tools/check_story.py`: compiles the story of the mod and of the uninstaller together with the game's own, with LSLib's StoryCompiler, and reports every problem they add: as the mod alone, as the uninstaller in its place, and as both loaded together. The game ships no story header, so the check writes one from the game's compiled story. `pack.ps1` runs it before packing.
+
+### Changed
+- `pack.ps1` builds and checks two packages, the mod and the uninstaller, each with its own zip.
+- The release workflow checks the uninstaller's zip too, and publishes it on Nexus Mods as an optional file once that file exists.
+
 ## [1.1.0] - 2026-11-18
 
 Five of the six waypoints move to where they were meant to be. The new places pass every check of the tools, which now read the whole level, but have not been seen in game yet: if one looks wrong, please report it with a screenshot. What comes next is in the [roadmap](docs/ROADMAP.md).
@@ -48,6 +61,7 @@ First public release.
 - Developer tools: game-data extraction from your own install, a reader for the game's navigation grid, a survey tool that finds and checks places for new waypoints, a generator that writes every mod file from `waypoints.json` and checks each waypoint against the game, tests, and a packager that verifies the pak and builds the release zip.
 - GitHub project files: contributing guide, code of conduct, security policy, issue forms, pull request template, CI, and a workflow that publishes releases on Nexus Mods.
 
-[Unreleased]: ../../compare/v1.1.0...HEAD
+[Unreleased]: ../../compare/v1.2.0...HEAD
+[1.2.0]: ../../compare/v1.1.0...v1.2.0
 [1.1.0]: ../../compare/v1.0.0...v1.1.0
 [1.0.0]: ../../releases/tag/v1.0.0

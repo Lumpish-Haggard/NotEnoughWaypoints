@@ -23,5 +23,6 @@ Mods/NotEnoughWaypoints/Globals/** linguist-generated=true
 Mods/NotEnoughWaypoints/Levels/** linguist-generated=true
 Mods/NotEnoughWaypoints/Localization/** linguist-generated=true
 Mods/NotEnoughWaypoints/Story/** linguist-generated=true
+Mods/NotEnoughWaypointsUninstaller/Story/** linguist-generated=true
 Localization/** linguist-generated=true
 *.lsx linguist-language=XML
