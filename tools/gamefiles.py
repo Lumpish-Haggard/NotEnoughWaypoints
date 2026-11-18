@@ -12,7 +12,9 @@ Level files (.lsx)
     * level templates: the template that names a sub-level (SubLevelName in the root
       templates), placed with this transform;
     * tile constructions: walls, floors and trims built from tiles, each tile with its
-      own "Translate" and "Rotate" (a 3x3 matrix written row by row), in level coordinates.
+      own "Translate", "Rotate" (a 3x3 matrix written row by row) or "QRotate" (a
+      quaternion), "Scale" (uniform) and "ScaleZ" (length stretch along local x), in
+      level coordinates.
 
 Sub-levels
   The game builds most places from sub-levels: the Guildhall, Rivington's streets, the
@@ -156,19 +158,23 @@ def trigger_shape(node, a=None):
 
 
 class Tile(tuple):
-    """One tile of a tile construction: position, rotation, scale, walk on, walk through, stretchable, tile GUID."""
+    """One tile of a tile construction: position, rotation, scale, length stretch, walk on, walk through,
+    stretchable, no decals, tile GUID."""
     __slots__ = ()
     pos = property(lambda self: self[0])
     rot = property(lambda self: self[1])
     scale = property(lambda self: self[2])
-    walk_on = property(lambda self: self[3])
-    walk_through = property(lambda self: self[4])
-    stretch = property(lambda self: self[5])
-    guid = property(lambda self: self[6])
+    scale_z = property(lambda self: self[3])
+    walk_on = property(lambda self: self[4])
+    walk_through = property(lambda self: self[5])
+    stretch = property(lambda self: self[6])
+    no_decal = property(lambda self: self[7])
+    guid = property(lambda self: self[8])
 
 
 def read_tiles(node):
     """The tiles of one tile construction, in level coordinates."""
+    no_decal = _attrs(node).get("RecieveDecal") == "False"
     out = []
     for tile in node.iter("node"):
         if tile.get("id") != "tile":
@@ -176,28 +182,42 @@ def read_tiles(node):
         a = _attrs(tile)
         if "Translate" not in a:
             continue
-        m = _floats(a.get("Rotate", "1 0 0 0 1 0 0 0 1"))
-        out.append(Tile((_floats(a["Translate"]), matrix_to_quat((m[0:3], m[3:6], m[6:9])),
-                         float(a.get("Scale", "1") or 1), a.get("WalkOn") == "True", a.get("WalkThrough") == "True",
-                         a.get("Stretchable") == "True", a.get("tile", ""))))
+        if "QRotate" in a:
+            q = _floats(a["QRotate"])
+            n = math.sqrt(sum(v * v for v in q)) or 1.0
+            rot = canonical(tuple(v / n for v in q))
+        else:
+            m = _floats(a.get("Rotate", "1 0 0 0 1 0 0 0 1"))
+            rot = matrix_to_quat((m[0:3], m[3:6], m[6:9]))
+        out.append(Tile((_floats(a["Translate"]), rot,
+                         float(a.get("Scale", "1") or 1), float(a.get("ScaleZ", "1") or 1),
+                         a.get("WalkOn") == "True", a.get("WalkThrough") == "True",
+                         a.get("Stretchable") == "True", no_decal, a.get("tile", ""))))
     return out
 
 
-def tile_record(name, tile, pos=None, rot=None, scale=None, ext=None):
-    """A tile as the cache keeps it: construction name, position, rotation, scale, flags, extent."""
+def tile_record(name, tile, pos=None, rot=None, scale=None, ext=None, visual=None):
+    """A tile as the cache keeps it: construction name, position, rotation, scale, length stretch, flags,
+    extent, visual name."""
     rec = {"c": name, "pos": rounded(pos if pos is not None else tile.pos),
            "rot": rounded(rot if rot is not None else tile.rot, 5)}
     scale = tile.scale if scale is None else scale
     if abs(scale - 1.0) > 1e-6:
         rec["scale"] = round(scale, ROUND)
+    if abs(tile.scale_z - 1.0) > 1e-6:
+        rec["sz"] = round(tile.scale_z, ROUND)
     if tile.walk_on:
         rec["walk"] = 1
     if tile.walk_through:
         rec["thru"] = 1
     if tile.stretch:
         rec["stretch"] = 1
+    if tile.no_decal:
+        rec["nodecal"] = 1
     if ext:
         rec["ext"] = ext
+    if visual:
+        rec["v"] = visual
     return rec
 
 
@@ -240,8 +260,9 @@ def visual_of(template, templates):
 
 def bank(path):
     """From a resource bank: the bounds of every visual ({ID: [min x, y, z, max x, y, z]}, in the visual's
-    own frame) and the visual of every tile of its tile sets ({tile GUID: visual ID})."""
-    bounds, tiles = {}, {}
+    own frame), the visual of every tile of its tile sets ({tile GUID: visual ID}), and the name of every
+    visual ({ID: Name})."""
+    bounds, tiles, names = {}, {}, {}
     region = None
     for event, elem in ET.iterparse(path, events=("start", "end")):
         if event == "start":
@@ -258,10 +279,13 @@ def bank(path):
         elif node_id == "Resource":
             if region == "VisualBank":
                 a = _attrs(elem)
-                if "ID" in a and "BoundsMin" in a and "BoundsMax" in a:
-                    bounds[a["ID"]] = rounded(_floats(a["BoundsMin"]) + _floats(a["BoundsMax"]))
+                if "ID" in a:
+                    if "BoundsMin" in a and "BoundsMax" in a:
+                        bounds[a["ID"]] = rounded(_floats(a["BoundsMin"]) + _floats(a["BoundsMax"]))
+                    if a.get("Name"):
+                        names[a["ID"]] = a["Name"]
             elem.clear()
-    return bounds, tiles
+    return bounds, tiles, names
 
 
 def placed(rec, placement, via, sub, later):

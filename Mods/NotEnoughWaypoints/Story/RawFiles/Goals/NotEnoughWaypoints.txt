@@ -15,15 +15,15 @@ INITSECTION
 DB_WaypointInfo("Act1","NEW_WAYP_DEN_Hollow",(ITEM)S_NEW_WAYP_DEN_Hollow_Shrine_968d6ac1-6eab-4906-9107-31fa006de392,(TRIGGER)S_NEW_WAYP_DEN_Hollow_Trigger_4a56b43b-456d-4556-8d14-d7f62c62b4e3);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_DEN_Hollow");
 
-// Underdark - Arcane Tower. Underdark: on the wall of the Arcane Tower, a few steps from its front door
+// Underdark - Arcane Tower. Underdark: on the landing outside the Arcane Tower's front door, backed against the cliff edge to the east
 DB_WaypointInfo("Act1","NEW_WAYP_UND_ArcaneTower",(ITEM)S_NEW_WAYP_UND_ArcaneTower_Shrine_8b98077f-ef81-4f3b-9b83-a7b8dbc6042a,(TRIGGER)S_NEW_WAYP_UND_ArcaneTower_Trigger_5f0acf54-f384-46f5-8565-fb29d2eb1d69);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_UND_ArcaneTower");
 
-// Shattered Sanctum. Goblin camp: inside the Shattered Sanctum, on the wall by the pillar east of the spider pits, between Dror Ragzlin's throne room, Minthara and True Soul Gut
+// Shattered Sanctum. Goblin camp: inside the Shattered Sanctum, backed into the northwest corner of the central hall south of Dror Ragzlin's doors
 DB_WaypointInfo("Act1","NEW_WAYP_GOB_Sanctum",(ITEM)S_NEW_WAYP_GOB_Sanctum_Shrine_e93a3786-7fed-49f7-b38f-4a9a8b84f274,(TRIGGER)S_NEW_WAYP_GOB_Sanctum_Trigger_8e608623-0a37-4ad7-b174-522485ae5b3a);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_GOB_Sanctum");
 
-// Moonrise Towers - Main Floor. Moonrise Towers: on the main floor, on the wall east of the bazaar
+// Moonrise Towers - Main Floor. Moonrise Towers: on the main floor, on the west edge of the central hall beside the bazaar
 DB_WaypointInfo("Act2","NEW_WAYP_MOO_MainFloor",(ITEM)S_NEW_WAYP_MOO_MainFloor_Shrine_36532ff4-cbfa-435e-a268-523601497d71,(TRIGGER)S_NEW_WAYP_MOO_MainFloor_Trigger_b0b7698a-0c95-43a8-9479-db28f59df4de);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_MOO_MainFloor");
 
@@ -31,7 +31,7 @@ DB_NEW_WAYP_Waypoint("NEW_WAYP_MOO_MainFloor");
 DB_WaypointInfo("Act3","NEW_WAYP_WYR_OpenHandTemple",(ITEM)S_NEW_WAYP_WYR_OpenHandTemple_Shrine_7ca5a406-5bdb-48ec-b5a6-5a908a66bdb8,(TRIGGER)S_NEW_WAYP_WYR_OpenHandTemple_Trigger_4812c9a2-2d75-4945-bea1-dc6f31a9904f);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_WYR_OpenHandTemple");
 
-// Guildhall. Lower City: in the Guildhall's main hall, where Nine-Fingers Keene's visitors wait, on the wall beside the bar
+// Guildhall. Lower City: in the Guildhall's lower main hall, backed into the alcove on the south side
 DB_WaypointInfo("Act3b","NEW_WAYP_LOW_Guildhall",(ITEM)S_NEW_WAYP_LOW_Guildhall_Shrine_a6b385f3-6bcc-4c81-b288-e0bc73a4e246,(TRIGGER)S_NEW_WAYP_LOW_Guildhall_Trigger_9f9805fa-361a-42d2-aa01-0d0da9c71fa5);
 DB_NEW_WAYP_Waypoint("NEW_WAYP_LOW_Guildhall");
 
@@ -82,29 +82,29 @@ PROC_LockWaypointForAll("NEW_WAYP_DEN_Hollow");
 IF
 LevelLoaded("WLD_Main_A")
 AND
-NOT DB_NEW_WAYP_Placed("NEW_WAYP_UND_ArcaneTower",2)
+NOT DB_NEW_WAYP_Placed("NEW_WAYP_UND_ArcaneTower",3)
 THEN
-DB_NEW_WAYP_Placed("NEW_WAYP_UND_ArcaneTower",2);
-ToTransform(S_NEW_WAYP_UND_ArcaneTower_Shrine_8b98077f-ef81-4f3b-9b83-a7b8dbc6042a,-18.812,32.027,-290.1,0.0,180.0,0.0);
-TeleportToPosition(S_NEW_WAYP_UND_ArcaneTower_Trigger_5f0acf54-f384-46f5-8565-fb29d2eb1d69,-18.812,32.041,-288.1,"",0,0,0,0,0);
+DB_NEW_WAYP_Placed("NEW_WAYP_UND_ArcaneTower",3);
+ToTransform(S_NEW_WAYP_UND_ArcaneTower_Shrine_8b98077f-ef81-4f3b-9b83-a7b8dbc6042a,-17.58,32.027,-284.367,0.0,157.49,0.0);
+TeleportToPosition(S_NEW_WAYP_UND_ArcaneTower_Trigger_5f0acf54-f384-46f5-8565-fb29d2eb1d69,-18.25,32.041,-282.75,"",0,0,0,0,0);
 
 IF
 LevelLoaded("WLD_Main_A")
 AND
-NOT DB_NEW_WAYP_Placed("NEW_WAYP_GOB_Sanctum",2)
+NOT DB_NEW_WAYP_Placed("NEW_WAYP_GOB_Sanctum",3)
 THEN
-DB_NEW_WAYP_Placed("NEW_WAYP_GOB_Sanctum",2);
-ToTransform(S_NEW_WAYP_GOB_Sanctum_Shrine_e93a3786-7fed-49f7-b38f-4a9a8b84f274,312.686,41.192,14.22,0.0,90.0,0.0);
-TeleportToPosition(S_NEW_WAYP_GOB_Sanctum_Trigger_8e608623-0a37-4ad7-b174-522485ae5b3a,310.686,41.086,14.22,"",0,0,0,0,0);
+DB_NEW_WAYP_Placed("NEW_WAYP_GOB_Sanctum",3);
+ToTransform(S_NEW_WAYP_GOB_Sanctum_Shrine_e93a3786-7fed-49f7-b38f-4a9a8b84f274,304.58,41.072,16.367,0.0,-22.51,0.0);
+TeleportToPosition(S_NEW_WAYP_GOB_Sanctum_Trigger_8e608623-0a37-4ad7-b174-522485ae5b3a,305.25,41.006,14.75,"",0,0,0,0,0);
 
 IF
 LevelLoaded("SCL_Main_A")
 AND
-NOT DB_NEW_WAYP_Placed("NEW_WAYP_MOO_MainFloor",2)
+NOT DB_NEW_WAYP_Placed("NEW_WAYP_MOO_MainFloor",3)
 THEN
-DB_NEW_WAYP_Placed("NEW_WAYP_MOO_MainFloor",2);
-ToTransform(S_NEW_WAYP_MOO_MainFloor_Shrine_36532ff4-cbfa-435e-a268-523601497d71,-133.609,22.031,-175.724,0.0,180.0,0.0);
-TeleportToPosition(S_NEW_WAYP_MOO_MainFloor_Trigger_b0b7698a-0c95-43a8-9479-db28f59df4de,-133.609,22.005,-173.724,"",0,0,0,0,0);
+DB_NEW_WAYP_Placed("NEW_WAYP_MOO_MainFloor",3);
+ToTransform(S_NEW_WAYP_MOO_MainFloor_Shrine_36532ff4-cbfa-435e-a268-523601497d71,-155.867,21.251,-173.08,0.0,-67.49,0.0);
+TeleportToPosition(S_NEW_WAYP_MOO_MainFloor_Trigger_b0b7698a-0c95-43a8-9479-db28f59df4de,-154.25,21.345,-173.75,"",0,0,0,0,0);
 
 IF
 LevelLoaded("BGO_Main_A")
@@ -118,11 +118,11 @@ TeleportToPosition(S_NEW_WAYP_WYR_OpenHandTemple_Trigger_4812c9a2-2d75-4945-bea1
 IF
 LevelLoaded("CTY_Main_A")
 AND
-NOT DB_NEW_WAYP_Placed("NEW_WAYP_LOW_Guildhall",2)
+NOT DB_NEW_WAYP_Placed("NEW_WAYP_LOW_Guildhall",3)
 THEN
-DB_NEW_WAYP_Placed("NEW_WAYP_LOW_Guildhall",2);
-ToTransform(S_NEW_WAYP_LOW_Guildhall_Shrine_a6b385f3-6bcc-4c81-b288-e0bc73a4e246,-23.013,30.61,768.449,0.0,0.0,0.0);
-TeleportToPosition(S_NEW_WAYP_LOW_Guildhall_Trigger_9f9805fa-361a-42d2-aa01-0d0da9c71fa5,-23.013,30.584,766.449,"",0,0,0,0,0);
+DB_NEW_WAYP_Placed("NEW_WAYP_LOW_Guildhall",3);
+ToTransform(S_NEW_WAYP_LOW_Guildhall_Shrine_a6b385f3-6bcc-4c81-b288-e0bc73a4e246,-30.25,26.672,745.0,0.0,-180.0,0.0);
+TeleportToPosition(S_NEW_WAYP_LOW_Guildhall_Trigger_9f9805fa-361a-42d2-aa01-0d0da9c71fa5,-30.25,26.684,746.75,"",0,0,0,0,0);
 
 //END_REGION
 EXITSECTION

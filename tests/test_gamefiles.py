@@ -84,11 +84,11 @@ TILES = ('<node id="GameObjects"><attribute id="MapKey" type="FixedString" value
          '<attribute id="Type" type="FixedString" value="TileConstruction" />'
          '<children><node id="tiles"><children>'
          '<node id="tile"><attribute id="Rotate" type="mat3x3" value=" 0.00  0.00  1.00 &#xD;&#xA; 0.00  1.00  0.00 &#xD;&#xA;-1.00  0.00  0.00 &#xD;&#xA;" />'
-         '<attribute id="Scale" type="float" value="1" /><attribute id="Stretchable" type="bool" value="True" />'
+         '<attribute id="Scale" type="float" value="1" /><attribute id="ScaleZ" type="float" value="0.884" /><attribute id="Stretchable" type="bool" value="True" />'
          '<attribute id="Translate" type="fvec3" value="-19.9 30.58 -120.49" />'
          '<attribute id="WalkOn" type="bool" value="False" /><attribute id="WalkThrough" type="bool" value="False" />'
          '<attribute id="tile" type="guid" value="0db69b54-7cfb-436b-bdd0-934cfc40c41d" /></node>'
-         '<node id="tile"><attribute id="Rotate" type="mat3x3" value=" 1.00  0.00  0.00 &#xD;&#xA; 0.00  1.00  0.00 &#xD;&#xA; 0.00  0.00  1.00 &#xD;&#xA;" />'
+         '<node id="tile"><attribute id="QRotate" type="fvec4" value="0 0.9238795 0 -0.3826834" />'
          '<attribute id="Scale" type="float" value="1" /><attribute id="Translate" type="fvec3" value="-17.9 30.58 -120.49" />'
          '<attribute id="WalkOn" type="bool" value="True" /><attribute id="WalkThrough" type="bool" value="False" /></node>'
          '</children></node>' + transform("-17.85 30.58 -120.95") + '</children></node>\n')
@@ -130,14 +130,19 @@ class LevelFiles(unittest.TestCase):
         ((wall, floor),) = self.read(TILES, "tiles")
         self.assertEqual(wall.pos, [-19.9, 30.58, -120.49])
         self.assertTrue(close(wall.rot, quat_yaw(90)), wall.rot)   # the matrix is written row by row
-        self.assertFalse(wall.walk_on or wall.walk_through)
+        self.assertAlmostEqual(wall.scale_z, 0.884)
+        self.assertFalse(wall.walk_on or wall.walk_through or wall.no_decal)
         self.assertTrue(wall.stretch)
         self.assertEqual(wall.guid, "0db69b54-7cfb-436b-bdd0-934cfc40c41d")
         self.assertTrue(floor.walk_on)
-        rec = gamefiles.tile_record("WALL_City_Wooden_House_A_0n5D_4H_B_015", wall, ext=[-1, 0, -0.25, 1, 4, 0.25])
+        self.assertTrue(close(floor.rot, quat_yaw(-135)), floor.rot)   # QRotate quaternion (canonicalised)
+        rec = gamefiles.tile_record("WALL_City_Wooden_House_A_0n5D_4H_B_015", wall,
+                                    ext=[-1, 0, -0.25, 1, 4, 0.25], visual="WALL_Test_S_Piece_A")
         self.assertNotIn("walk", rec)
         self.assertEqual(rec["stretch"], 1)
+        self.assertEqual(rec["sz"], 0.884)
         self.assertEqual(rec["ext"], [-1, 0, -0.25, 1, 4, 0.25])
+        self.assertEqual(rec["v"], "WALL_Test_S_Piece_A")
         self.assertEqual(gamefiles.tile_record("FLOOR", floor)["walk"], 1)
 
     def test_visual_bounds_and_tile_sets(self):
@@ -150,14 +155,17 @@ class LevelFiles(unittest.TestCase):
                 '<region id="VisualBank"><node id="VisualBank"><children><node id="Resource">'
                 '<attribute id="BoundsMax" type="fvec3" value="1 4 0.25" />'
                 '<attribute id="BoundsMin" type="fvec3" value="-1 0 -0.25" />'
-                '<attribute id="ID" type="FixedString" value="v1" /></node></children></node></region></save>\n')
+                '<attribute id="ID" type="FixedString" value="v1" />'
+                '<attribute id="Name" type="FixedString" value="WALL_Test_S_Piece_A" /></node>'
+                '</children></node></region></save>\n')
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "_merged.lsx")
             with open(path, "w", encoding="utf-8") as fh:
                 fh.write(bank)
-            bounds, tiles = gamefiles.bank(path)
+            bounds, tiles, names = gamefiles.bank(path)
         self.assertEqual(bounds, {"v1": [-1.0, 0.0, -0.25, 1.0, 4.0, 0.25]})
         self.assertEqual(tiles, {"0db69b54-7cfb-436b-bdd0-934cfc40c41d": "v1"})
+        self.assertEqual(names, {"v1": "WALL_Test_S_Piece_A"})
 
     def test_visuals_are_inherited(self):
         roots = {"child": {"visual": "", "parent": "parent"}, "parent": {"visual": "v1", "parent": ""},
@@ -270,15 +278,19 @@ WALL_EXT = [-1.0, 0.0, -0.25, 1.0, 4.0, 0.25]   # a wall tile 2 m long, 4 m high
 
 
 class FakeGrid:
-    """Flat free floor at height 0 everywhere, except where `holes` (x/z boxes) cut it."""
+    """Flat free floor at height `height` everywhere, except where `holes` (x/z boxes) cut it."""
 
-    def __init__(self, holes=()):
+    def __init__(self, holes=(), height=0.0, blocked=None):
         self.holes = holes
+        self.height = height
+        self.blocked = blocked
 
     def surfaces(self, x, z):
+        if self.blocked and self.blocked(x, z):
+            return [(self.height, 0x2)]
         if any(x0 <= x <= x1 and z0 <= z <= z1 for x0, x1, z0, z1 in self.holes):
-            return [(0.0, 0x2)]
-        return [(0.0, 0)]
+            return [(self.height, 0x2)]
+        return [(self.height, 0)]
 
     def floor(self, x, z, near, tolerance=2.0):
         free = [h for h, flags in self.surfaces(x, z) if not flags & 0x7 and abs(h - near) <= tolerance]
@@ -286,8 +298,8 @@ class FakeGrid:
 
 
 class FakeLevel:
-    def __init__(self, tiles=(), solid=(), holes=()):
-        self.grid = FakeGrid(holes)
+    def __init__(self, tiles=(), solid=(), holes=(), height=0.0, blocked=None):
+        self.grid = FakeGrid(holes, height=height, blocked=blocked)
         self.tiles = Indexed(tiles)
         self.tile_boxes = BoxIndex(self.tiles)
         self.solid = Indexed(solid)
@@ -314,8 +326,10 @@ class Boxes(unittest.TestCase):
         self.assertTrue(close(c, (10.0, 2.0, 5.0)))
         self.assertTrue(close(half, (1.0, 2.0, 0.25)))
         self.assertTrue(close(axes[0], (0.0, 0.0, -1.0)))
-        # A stretchable tile is stretched along its length only.
-        _, _, half = box({"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "ext": WALL_EXT, "scale": 1.5, "stretch": 1})
+        # Uniform Scale applies to all three axes; ScaleZ ("sz") stretches length along local x.
+        _, _, half = box({"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "ext": WALL_EXT, "scale": 1.5, "sz": 0.8})
+        self.assertTrue(close(half, (1.2, 3.0, 0.375)))
+        _, _, half = box({"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "ext": WALL_EXT, "sz": 1.5})
         self.assertTrue(close(half, (1.5, 2.0, 0.25)))
         _, _, half = box({"pos": [0, 0, 0], "rot": [0, 0, 0, 1], "ext": WALL_EXT, "scale": 0.5})
         self.assertTrue(close(half, (0.5, 1.0, 0.125)))
@@ -402,6 +416,69 @@ class Walls(unittest.TestCase):
         door = {"c": "WALL_Test_Door_A_000", "pos": [1.0, 0.0, 0.25], "rot": [0, 0, 0, 1], "ext": WALL_EXT}
         errors, _ = check_placement(FakeLevel(tiles=self.wall() + [door], holes=self.holes()), self.waypoint())
         self.assertTrue(any("drawn across WALL_Test_Door_A_000" in e for e in errors), errors)
+
+    def test_no_rune_on_door_piece_broken_or_nodecal_tile(self):
+        door_piece = [dict(t, v="WALL_City_Castlewall_Inside_1D_4H_4W_D_Piece_B") for t in self.wall()]
+        errors, _ = check_placement(FakeLevel(tiles=door_piece, holes=self.holes()), self.waypoint())
+        self.assertTrue(any("drawn across" in e for e in errors), errors)
+        broken = [dict(t, v="WALL_Dungeon_Abbey_A_2n5D_10H_4W_E_Piece_Broken_D") for t in self.wall()]
+        errors, _ = check_placement(FakeLevel(tiles=broken, holes=self.holes()), self.waypoint())
+        self.assertTrue(any("no wall behind" in e for e in errors), errors)
+        nodecal = [dict(t, nodecal=1) for t in self.wall()]
+        errors, _ = check_placement(FakeLevel(tiles=nodecal, holes=self.holes()), self.waypoint())
+        self.assertTrue(any("does not receive decals" in e for e in errors), errors)
+
+    def test_walkable_floor_behind_wall_is_rejected(self):
+        # An archway or loose wall box leaves walkable floor right behind the shrine's plane.
+        errors, _ = check_placement(FakeLevel(tiles=self.wall(), holes=()), self.waypoint())
+        self.assertTrue(any("walkable floor runs behind" in e for e in errors), errors)
+
+    def test_games_own_wall_runes_pass_on_their_real_tiles(self):
+        # Tiles copied from the game's CTY_Main_A (Lower City Central Wall, 45-degree wall using QRotate)
+        # and SCL_Main_A (Moonrise Towers, using Rotate and ScaleZ = 0.884). Both must pass at the game's
+        # own yaw, within a few centimetres of the game's own shrine.
+        central_wall_tiles = [
+            {"c": "WALL_City_Lower_House_A_1D_4H_A_645", "pos": [-54.476, 29.185, -56.402],
+             "rot": [0.0, -0.9234, 0.0, 0.38384], "sz": 1.0, "stretch": 1,
+             "ext": [0.0, 0.0, -0.32, 2.0, 4.002, 0.001], "v": "WALL_City_Lower_House_A_0n5D_4H_2W_S_Piece_Outside_A"},
+            {"c": "WALL_City_Lower_House_A_1D_4H_A_645", "pos": [-51.654, 29.185, -59.238],
+             "rot": [0.0, -0.9234, 0.0, 0.38384], "sz": 1.0, "stretch": 1,
+             "ext": [0.0, 0.0, -0.32, 2.0, 4.002, 0.001], "v": "WALL_City_Lower_House_A_0n5D_4H_2W_S_Piece_Outside_A"},
+            {"c": "WALL_City_Lower_House_A_1D_4H_A_645", "pos": [-53.065, 29.185, -57.82],
+             "rot": [0.0, -0.9234, 0.0, 0.38384], "sz": 1.0, "stretch": 1,
+             "ext": [0.0, 0.0, -0.32, 2.0, 4.002, 0.001], "v": "WALL_City_Lower_House_A_0n5D_4H_2W_S_Piece_Outside_A"},
+            {"c": "WALL_City_Lower_House_A_1D_4H_A_645", "pos": [-55.888, 29.185, -54.984],
+             "rot": [0.0, 0.38384, 0.0, 0.9234], "sz": 1.0, "stretch": 1,
+             "ext": [0.0, 0.0, -0.32, 6.001, 4.002, 0.001], "v": "WALL_City_Lower_House_A_0n5D_4H_6W_S_Piece_Outside_A"},
+        ]
+        # Game shrine at (-53.573, 29.335, -56.934), yaw 225 (-135): the tile face stands 5.8 cm out along (+0.707, +0.707).
+        cw_face = (-53.573 + 0.058 * math.sqrt(0.5), 29.335, -56.934 + 0.058 * math.sqrt(0.5))
+        cw_wp = {"id": "WAYP_LOW_CentralWall", "style": "wall",
+                 "shrine": {"position": list(cw_face), "yaw": -135.0},
+                 "trigger": {"position": [cw_face[0] + 2.0 * math.sqrt(0.5), 29.335 - SHRINE_ABOVE_FLOOR,
+                                          cw_face[2] + 2.0 * math.sqrt(0.5)]}}
+        cw_level = FakeLevel(tiles=central_wall_tiles, height=29.335 - SHRINE_ABOVE_FLOOR,
+                             blocked=lambda x, z: (x - cw_face[0]) + (z - cw_face[2]) < 0.0)
+        self.assertEqual(check_placement(cw_level, cw_wp)[0], [])
+
+        moonrise_tiles = [
+            {"c": "WALL_Harbor_House_Base_A_1D_4H_A_050", "pos": [-160.37, 22.02, -100.296],
+             "rot": [0.0, 0.0, 0.0, 1.0], "ext": [-1.004, -0.013, -0.588, 0.585, 4.003, 1.001],
+             "v": "WALL_Harbor_House_Base_B_1D_4H_1W_L_Piece_A"},
+            {"c": "WALL_Harbor_House_Base_A_1D_4H_A_050", "pos": [-160.37, 22.02, -94.761],
+             "rot": [0.0, -0.70711, 0.0, 0.70711], "ext": [-1.004, -0.013, -0.588, 0.585, 4.003, 1.001],
+             "v": "WALL_Harbor_House_Base_B_1D_4H_1W_L_Piece_A"},
+            {"c": "WALL_Harbor_House_Base_A_1D_4H_A_050", "pos": [-160.37, 22.02, -95.761],
+             "rot": [0.0, 0.70711, 0.0, 0.70711], "sz": 0.884, "stretch": 1,
+             "ext": [-0.005, -0.002, -0.588, 4.008, 4.018, 0.584], "v": "WALL_Harbor_House_Base_B_1D_4H_4W_S_Piece_A"},
+        ]
+        # Game shrine at (-159.756, 22.354, -97.297), yaw -90: exact shrine position is 3 cm from the wall face.
+        moo_wp = {"id": "WAYP_MOO_TowerExterior", "style": "wall",
+                  "shrine": {"position": [-159.756, 22.354, -97.297], "yaw": -90.0},
+                  "trigger": {"position": [-157.756, 22.354 - SHRINE_ABOVE_FLOOR, -97.297]}}
+        moo_level = FakeLevel(tiles=moonrise_tiles, height=22.354 - SHRINE_ABOVE_FLOOR,
+                              blocked=lambda x, z: x < -159.78)
+        self.assertEqual(check_placement(moo_level, moo_wp)[0], [])
 
     def test_rune_box_lies_on_the_face(self):
         rune = rune_box(self.waypoint()["shrine"]["position"], 0.0)

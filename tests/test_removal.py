@@ -114,7 +114,7 @@ class Meta(unittest.TestCase):
         self.assertEqual(errors, [])
 
     def test_versions_must_match(self):
-        self.uninstaller_meta(lambda t: t.replace("36310271995674624", "36028797018963968"))
+        self.uninstaller_meta(lambda t: re.sub(r'(id="Version64" type="int64" value=")\d+', r"\g<1>36028797018963968", t))
         errors = []
         build_waypoints.check_meta(errors)
         self.assertTrue(any("released together" in e for e in errors), errors)

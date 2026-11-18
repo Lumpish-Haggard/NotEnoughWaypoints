@@ -121,8 +121,9 @@ class Data(unittest.TestCase):
 
     def test_wall_and_move_fields(self):
         wall = copy.deepcopy(self.data)
-        wp = next(w for w in wall["waypoints"] if w.get("style") == "wall")
-        del wp["shrine"]["yaw"]
+        wp = wall["waypoints"][0]
+        wp["style"] = "wall"
+        wp["shrine"].pop("yaw", None)
         wp["rock"] = {"guid": "00000000-0000-4000-8000-000000000001", "style": "grey"}
         wp["placement"] = 0
         wp["accept"] = ["x"]

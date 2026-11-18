@@ -183,8 +183,9 @@ def sublevel_folders(lsx_roots, name):
 class Extents:
     """How far things reach: the bounds of the visual each template and each tile is drawn with."""
 
-    def __init__(self, roots, bounds, tile_visuals):
+    def __init__(self, roots, bounds, tile_visuals, visual_names=None):
         self.roots, self.bounds, self.tile_visuals = roots, bounds, tile_visuals
+        self.visual_names = visual_names or {}
 
     def of_template(self, template):
         return self.bounds.get(gamefiles.visual_of(template, self.roots))
@@ -192,13 +193,17 @@ class Extents:
     def of_tile(self, tile):
         return self.bounds.get(self.tile_visuals.get(tile.guid, ""))
 
+    def visual_of_tile(self, tile):
+        return self.visual_names.get(self.tile_visuals.get(tile.guid, ""), "")
+
 
 def build_level(level, lsx_roots, templates, sub_cache, grid=None, extents=None):
     """Every object and tile of a main level and of the sub-levels placed into it, in world coordinates."""
     main, constructions = read_level(lsx_roots, level)
     objects = list(main.values())
     ext = extents.of_tile if extents else (lambda tile: None)
-    tiles = [gamefiles.tile_record(name, t, ext=ext(t)) for name, ts in constructions for t in ts]
+    vname = extents.visual_of_tile if extents else (lambda tile: "")
+    tiles = [gamefiles.tile_record(name, t, ext=ext(t), visual=vname(t)) for name, ts in constructions for t in ts]
     report = []
     missing = set()
 
@@ -227,7 +232,7 @@ def build_level(level, lsx_roots, templates, sub_cache, grid=None, extents=None)
             for name, ts in sub_constructions:
                 for tile in ts:
                     p, r, s = gamefiles.place(placement, tile.pos, tile.rot, tile.scale)
-                    t = gamefiles.tile_record(name, tile, p, r, s, ext=ext(tile))
+                    t = gamefiles.tile_record(name, tile, p, r, s, ext=ext(tile), visual=vname(tile))
                     t["via"] = via
                     if is_later:
                         t["later"] = True
@@ -390,13 +395,14 @@ def main():
     print(f"  {len(roots)} root templates, {len(templates)} of them level templates")
 
     print("Reading how far things reach (the bounds of every visual and tile)...")
-    bounds, tile_visuals = {}, {}
+    bounds, tile_visuals, visual_names = {}, {}, {}
     for module in TEMPLATE_MODULES:
         for path in sorted(glob.glob(os.path.join(lsx, "Public", module, "Content", "**", "_merged.lsx"), recursive=True)):
-            b, t = gamefiles.bank(path)
+            b, t, n = gamefiles.bank(path)
             bounds.update(b)
             tile_visuals.update(t)
-    extents = Extents(roots, bounds, tile_visuals)
+            visual_names.update(n)
+    extents = Extents(roots, bounds, tile_visuals, visual_names)
     print(f"  {len(bounds)} visuals, {len(tile_visuals)} tiles")
 
     # Pass 2 and on: the sub-levels those levels place, and the ones placed inside them.

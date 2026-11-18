@@ -44,7 +44,7 @@ from navgrid import CELL, cell_centre  # noqa: E402
 from waypoints import (DATA_FILE, GROUP_OF_LEVEL, RE_OPENING, RE_TILE_OVER, ROCK_FOOTPRINT,  # noqa: E402
                        SHRINE_ABOVE_FLOOR, SHRINE_TEMPLATE, WALL_ARRIVAL, Level, add, area, box,
                        box_span, check_placement, describe, facing_yaw, load, load_story, mul, rock_base, shrine_yaw,
-                       story_zones, wall_axes)
+                       story_zones, tile_is_broken, tile_is_opening, wall_axes)
 
 
 def need(level: str) -> Level:
@@ -239,9 +239,11 @@ def wall_faces(lv: Level, x0, y0, z0, radius):
     """The faces of the level's walls near a point and near its height, as (point on the face, the way the
     face looks (horizontal), the way along the wall, half its length, its bottom, its top, the tile)."""
     faces = []
-    for t in lv.tiles.around(x0, z0, radius):
+    for t in lv.tiles.around(x0, z0, radius + 4.0):
         name = t.get("c", "")
-        if t.get("walk") or t.get("thru") or not t.get("ext") or RE_TILE_OVER.search(name) or RE_OPENING.search(name):
+        if (t.get("walk") or t.get("thru") or t.get("nodecal") or not t.get("ext")
+                or RE_TILE_OVER.search(name) or RE_TILE_OVER.search(t.get("v", ""))
+                or tile_is_opening(t) or tile_is_broken(t)):
             continue
         b = box(t)
         centre, axes, half = b

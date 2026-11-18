@@ -31,8 +31,9 @@ MOD = "NotEnoughWaypoints"
 UNINSTALLER = "NotEnoughWaypointsUninstaller"   # the separate mod that takes the waypoints out of a save
 DATA_FILE = os.path.join(ROOT, "waypoints.json")
 CACHE = os.path.join(ROOT, "tools", ".cache")
-CACHE_VERSION = 3   # the layout extract_game_data.py writes: 2 added sub-levels, tiles, trigger volumes and
-                    # story.json; 3 added how far items, props and tiles reach ("ext")
+CACHE_VERSION = 4   # the layout extract_game_data.py writes: 2 added sub-levels, tiles, trigger volumes and
+                    # story.json; 3 added how far items, props and tiles reach ("ext"); 4 fixed QRotate and
+                    # ScaleZ on tiles and added tile visual names ("v") and RecieveDecal ("nodecal")
 
 SHRINE_TEMPLATE = "2dab7df1-7914-4748-b329-b4fe8b60fcc9"   # Helper_Waypoint_A: the invisible waypoint object
 TRIGGER_TEMPLATE = "f7bd7465-b0ec-45b3-81f6-6f01d6c68c48"  # TeleportTrigger: the arrival point
@@ -226,15 +227,16 @@ def frame_box(origin, yaw, lo, hi):
 
 def box(o):
     """The box an object or a tile fills in the world, from the bounds of the visual it is drawn with:
-    (centre, axes, half sizes), or None when they are not known. A stretchable tile is stretched
-    along its length only, so its scale applies to its x alone."""
+    (centre, axes, half sizes), or None when they are not known. A tile's uniform Scale applies to all
+    three axes, and its ScaleZ ("sz") stretches its length along local x."""
     if "_box" in o:
         return o["_box"]
     ext = o.get("ext")
     if not ext:
         return None
     s = o.get("scale", 1.0)
-    k = (s, 1.0, 1.0) if o.get("stretch") else (s, s, s)
+    sz = o.get("sz", 1.0)
+    k = (s * sz, s, s)
     lo = tuple(v * f for v, f in zip(ext[:3], k))
     hi = tuple(v * f for v, f in zip(ext[3:], k))
     q = tuple(o["rot"])
@@ -448,7 +450,7 @@ class BoxIndex:
             # A sphere around the box, from its extent and scale alone (no turning needed).
             ext, x, z = it.get("ext"), it["pos"][0], it["pos"][2]
             if ext:
-                s = abs(it.get("scale", 1.0))
+                s = abs(it.get("scale", 1.0)) * max(1.0, abs(it.get("sz", 1.0)))
                 reach = s * (math.sqrt(sum(((a + b) / 2) ** 2 for a, b in zip(ext[:3], ext[3:])))
                              + math.sqrt(sum(((b - a) / 2) ** 2 for a, b in zip(ext[:3], ext[3:]))))
             else:
@@ -668,7 +670,7 @@ def tile_hits(level: Level, region, base):
     found = []
     for t in level.tile_boxes.reaching(region):
         b = box(t)
-        if b is None or not boxes_overlap(region, b):
+        if b is None or max(b[2]) > 50.0 or not boxes_overlap(region, b):
             continue
         low, high = box_span(b, (0.0, 1.0, 0.0))
         if high < base + 0.12:
@@ -805,8 +807,18 @@ PROJECTION_DEPTH = 0.25
 VIEW_DEPTH = 0.8
 VIEW_HEIGHT = 0.9
 
-# What a rune must not be drawn across: a way through the wall, or something hung in it.
-RE_OPENING = re.compile(r"Door|Gate|Hatch|Portcullis|Window|Shutter|Arch(?!ive)|Opening|Entrance|Ladder|Stairs", re.I)
+# What a rune must not be drawn across: a way through the wall, something hung in it, or a broken piece.
+# In the game's tilesets, doorway pieces are named *_D_Piece* and window pieces *_W_Piece*.
+RE_OPENING = re.compile(r"Door|Gate|Hatch|Portcullis|Window|Shutter|Arch(?!ive)|Opening|Entrance|Ladder|Stairs|_(?:D|W)_Piece(?:_|$)", re.I)
+RE_BROKEN = re.compile(r"(?:^|_)Broken(?:_|$)", re.I)
+
+
+def tile_is_opening(t) -> bool:
+    return bool(RE_OPENING.search(t.get("c", "")) or RE_OPENING.search(t.get("v", "")))
+
+
+def tile_is_broken(t) -> bool:
+    return bool(RE_BROKEN.search(t.get("c", "")) or RE_BROKEN.search(t.get("v", "")))
 
 
 def wall_axes(yaw):
@@ -846,8 +858,13 @@ def check_wall(level: Level, wp, errors=None) -> tuple[list[str], list[str]]:
     # behind the plane and still WALL_THICKNESS behind it, and open air just in front of it.
     area = frame_box(shrine, yaw, (WALL_RUNE[0] - 0.5, -0.5, -1.0), (WALL_RUNE[1] + 0.5, WALL_RUNE[3] + 0.5, 1.0))
     nearby = level.tile_boxes.reaching(area)
-    walls = [box(t) for t in nearby if not t.get("walk") and not t.get("thru") and t.get("ext")]
-    openings = [t for t in nearby if RE_OPENING.search(t.get("c", ""))]
+    walls = [box(t) for t in nearby
+             if not t.get("walk") and not t.get("thru") and not t.get("nodecal")
+             and not RE_TILE_OVER.search(t.get("c", "")) and not RE_TILE_OVER.search(t.get("v", ""))
+             and not tile_is_opening(t) and not tile_is_broken(t) and t.get("ext")
+             and max(box(t)[2]) <= 50.0]
+    openings = [t for t in nearby if tile_is_opening(t)]
+    no_decals = [t for t in nearby if t.get("nodecal") and t.get("ext")]
 
     def solid_at(p):
         return any(point_in_box(b, p) for b in walls)
@@ -872,7 +889,15 @@ def check_wall(level: Level, wp, errors=None) -> tuple[list[str], list[str]]:
     if buried:
         errors.append("%s: the wall stands in front of %d of the rune's %d points (the face is further out)" % (
             tag, buried, total))
+    # Independent check against the navigation grid: a real solid wall blocks walkable floor behind its face.
+    if any(level.floor(plane[0] + across[0] * u + behind[0] * 0.25,
+                       plane[2] + across[2] * u + behind[2] * 0.25, base, 0.5) is not None
+           for u in (-1.0, 0.0, 1.0)):
+        errors.append("%s: walkable floor runs behind the wall's face (an opening or loose wall box)" % tag)
     rune = rune_box(shrine, yaw)
+    for t in no_decals:
+        if boxes_overlap(rune, box(t)):
+            errors.append("%s: %s does not receive decals" % (tag, describe(t)))
     for t in openings:
         b = box(t)
         if (b and boxes_overlap(rune, b, 0.3)) or (not b and point_in_box(rune, t["pos"], 1.0)):

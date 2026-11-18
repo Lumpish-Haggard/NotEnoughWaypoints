@@ -16,28 +16,28 @@
 </div>
 
 > [!NOTE]
-> **Version 1.2 makes the mod safe to remove.** A small second file, *Not Enough Waypoints Uninstaller*, takes the waypoints out of a save, so that the mod can be removed in the middle of a playthrough: see [Removing the mod](#removing-the-mod). It was designed from a save made with the mod and checked against the game's own story, but has not been tried in game yet. Version 1.1 moved five of the six waypoints to where they were meant to be, four of them onto a wall as the game does indoors; those places have not been seen in game yet. If a waypoint floats, clips into something, stands in the way or its rune is not on its wall, please [report it](../../issues/new/choose) with a screenshot. What comes next is in [what is planned](docs/ROADMAP.md).
+> **Version 1.2.1 fixes the four smeared runes from 1.1 and 1.2.** Underdark - Arcane Tower, Shattered Sanctum, Moonrise Towers - Main Floor and Guildhall now sit on boulders at clean new spots, and all six waypoints have been seen and checked in game on Patch 8 Hotfix 10. Existing saves update automatically when each level is loaded. **Not Enough Waypoints Uninstaller** (added in 1.2) takes the waypoints out of a save so that the mod can be removed in the middle of a playthrough: see [Removing the mod](#removing-the-mod). What comes next is in [what is planned](docs/ROADMAP.md).
 
 ---
 
 Baldur's Gate 3 puts most of its waypoints at the edge of a place: outside the Emerald Grove, outside the goblin camp's temple, outside Moonrise Towers. The traders, quest givers and doors you keep coming back to are often a long walk further in. **This mod adds six waypoints where that walk is longest.**
 
-Each one is built the way the game builds its own in that kind of place: in buildings and against them, the game's waypoint rune on a wall; in the open, the rune on a boulder like the one at the Blighted Village. They work like the game's own too: walk near one to unlock it, then travel to it from the map or any other waypoint.
+Each one copies the game's own Blighted Village waypoint (the invisible shrine, the boulder in a colour that suits the place, and the rune projected onto its face), and works like the game's own: walk near one to unlock it, then travel to it from the map or any other waypoint.
 
 ## The waypoints
 
 | Waypoint | Act | Where | Saves you |
 |---|---|---|---|
-| The Hollow | 1 | Emerald Grove: a boulder on the floor of the Hollow, against the ledge below Okta's and Auntie Ethel's stalls, across from Dammon's forge | the walk in from the game's *Emerald Grove Environs* waypoint, outside the gate |
-| Underdark - Arcane Tower | 1 | The rune on the tower's wall, a few steps from its front door | the walk from the nearest Underdark waypoint and up past the tower's turrets |
-| Shattered Sanctum | 1 | Inside the temple: the rune on the wall by the pillar east of the spider pits, between Dror Ragzlin's throne room, Minthara and True Soul Gut | the walk from the game's *Goblin Camp* waypoint, outside, through the temple's entrance hall |
-| Moonrise Towers - Main Floor | 2 | The rune on a wall of the main floor, east of the bazaar | the walk from the game's *Moonrise Towers* waypoint, outside, through the front doors |
-| Open Hand Temple | 3 | Rivington: a boulder in the street in front of the temple, where the refugees beg | the walk up from the *Rivington* waypoint |
-| Guildhall | 3 | Lower City: the rune on the wall beside the bar in the Guildhall's main hall, where Nine-Fingers Keene's visitors wait | the walk through the sewers |
+| The Hollow | 1 | Emerald Grove: on the floor of the Hollow, against the ledge below Okta's and Auntie Ethel's stalls, across from Dammon's forge | the walk in from the game's *Emerald Grove Environs* waypoint, outside the gate |
+| Underdark - Arcane Tower | 1 | Underdark: on the landing outside the tower's front door, backed against the cliff edge to the east | the walk from the nearest Underdark waypoint and up past the tower's turrets |
+| Shattered Sanctum | 1 | Inside the temple: backed into the northwest corner of the central hall, south of Dror Ragzlin's doors | the walk from the game's *Goblin Camp* waypoint, outside, through the temple's entrance hall |
+| Moonrise Towers - Main Floor | 2 | On the main floor, on the west edge of the central entrance hall beside the bazaar | the walk from the game's *Moonrise Towers* waypoint, outside, through the front doors |
+| Open Hand Temple | 3 | Rivington: in the street in front of the temple, where the refugees beg | the walk up from the *Rivington* waypoint |
+| Guildhall | 3 | Lower City: in the Guildhall's lower main hall, backed into the alcove on the south side | the walk through the sewers |
 
 ## Features
 
-- **Built like the game's own**: in buildings and against them, the rune on a wall, turned and raised as on the game's own wall waypoints (Moonrise Towers, the Lower City); in the open, a copy of the Blighted Village boulder and rune, in a colour that suits the place. Unlocked the same way: come near one, or use it.
+- **Built like the game's own**: each waypoint is a copy of the Blighted Village boulder and rune, in a colour that suits the place. Unlocked the same way: come near one, or use it.
 - **They follow the story.** Like the game's own waypoints, each is locked with the rest of its act when the story moves on. The Hollow is also locked when the druids seal the Emerald Grove, at the same moment as the game's Grove waypoint, so it never gets you past the barrier.
 - **Sovereign Glut comes along**: the Arcane Tower counts as an Underdark waypoint, so he follows the party there like he does between the game's Underdark waypoints.
 - **New game or existing save**: the story picks the waypoints up when you load, and moves a waypoint that an update moved in a save made before it.

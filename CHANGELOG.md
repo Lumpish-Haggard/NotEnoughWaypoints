@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 Nothing yet.
 
+## [1.2.1] - 2026-11-18
+
+Fixes the four waypoints whose runes appeared smeared in 1.1 and 1.2 (Underdark - Arcane Tower, Shattered Sanctum, Moonrise Towers - Main Floor and Guildhall). All six waypoints have been seen and checked in game on Patch 8 Hotfix 10. Existing saves update automatically when each level is loaded.
+
+### Fixed
+- **Four smeared wall runes moved onto boulders at clean new places.** Repairing the tile reader showed that none of those four public areas has an unobstructed, decal-receiving tile wall (the Arcane Tower wall has `RecieveDecal="False"`, and the other three rooms are built of large props or lined with wainscots, furniture and archways). All four now use the Blighted Village boulder arrangement at newly verified places clear of doors, walkways and furniture (with prop-built wall runes left for 1.3):
+  - **Underdark - Arcane Tower**: on the landing outside the tower's front door, backed against the cliff edge to the east.
+  - **Shattered Sanctum**: backed into the northwest corner of the central hall, south of Dror Ragzlin's doors.
+  - **Moonrise Towers - Main Floor**: on the west edge of the central entrance hall beside the bazaar.
+  - **Guildhall**: in the lower main hall, backed into the alcove on the south side.
+- **Tile reader and wall checks** (`tools/gamefiles.py`, `tools/extract_game_data.py`, `tools/waypoints.py`, `tools/survey.py`): reads `QRotate` (quaternion rotations used by about a third of the game's tiles), `ScaleZ` (length stretch along local x), `RecieveDecal` and tileset visual names (cache version 4). Rejects doorway (`_D_Piece`), window (`_W_Piece`) and broken tile pieces, non-decal walls, loose wall boxes with walkable floor behind them and corrupted roof bounds, with an offline regression test against the game's own Lower City Central Wall and Moonrise Towers wall tiles.
+
 ## [1.2.0] - 2026-11-18
 
 The mod is now safe to remove, moved up from 1.4 on the [roadmap](docs/ROADMAP.md). The uninstaller was designed from a save made with the mod and compiled against the game's own story, but has not been tried in game yet: if it leaves anything behind, please report it.
@@ -61,7 +73,8 @@ First public release.
 - Developer tools: game-data extraction from your own install, a reader for the game's navigation grid, a survey tool that finds and checks places for new waypoints, a generator that writes every mod file from `waypoints.json` and checks each waypoint against the game, tests, and a packager that verifies the pak and builds the release zip.
 - GitHub project files: contributing guide, code of conduct, security policy, issue forms, pull request template, CI, and a workflow that publishes releases on Nexus Mods.
 
-[Unreleased]: ../../compare/v1.2.0...HEAD
+[Unreleased]: ../../compare/v1.2.1...HEAD
+[1.2.1]: ../../compare/v1.2.0...v1.2.1
 [1.2.0]: ../../compare/v1.1.0...v1.2.0
 [1.1.0]: ../../compare/v1.0.0...v1.1.0
 [1.0.0]: ../../releases/tag/v1.0.0
