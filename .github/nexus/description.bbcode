@@ -13,6 +13,8 @@ Each one is built the way the game builds its own in that kind of place: in buil
 [*][size=3][color=#D4D4D8][b]Guildhall[/b] (Act 3): the rune on the wall beside the bar in the main hall, where Nine-Fingers Keene's visitors wait.[/color][/size][/*]
 [/list][size=3][color=#D4D4D8]Every waypoint was placed with the game's own navigation data and checked against everything the game puts nearby, its sub-levels and how far each object reaches included. If one still floats, clips into something or stands in the way, please report it on the Bugs tab or on [url=https://github.com/Lumpish-Haggard/NotEnoughWaypoints/issues/new/choose]GitHub[/url], with a screenshot.
 
+[b]New in 1.2:[/b] the mod is safe to remove. [b]Not Enough Waypoints Uninstaller[/b], under Optional files, takes the waypoints out of a save, so that you can remove the mod in the middle of a playthrough. See [i]Removing the mod[/i] below. It was designed from a save made with the mod and checked against the game's own story, but has not been tried in game yet: if it leaves anything behind, please report it.
+
 [b]New in 1.1:[/b] five of the six waypoints moved to where they were meant to be. The Guildhall, Moonrise Towers, the Arcane Tower and the Shattered Sanctum are now the rune on a wall, as the game does in and against buildings, and the Open Hand Temple stands in the street in front of the temple. Saves made with 1.0 are moved too. The new places pass every check of the tools but have not been seen in game yet.
 
 Open source (MIT): [url=https://github.com/Lumpish-Haggard/NotEnoughWaypoints]github.com/Lumpish-Haggard/NotEnoughWaypoints[/url][/color][/size]
@@ -27,8 +29,17 @@ Open source (MIT): [url=https://github.com/Lumpish-Haggard/NotEnoughWaypoints]gi
 [*][size=3][color=#D4D4D8][b]Manual[/b]: put [i]NotEnoughWaypoints.pak[/i] in [i]%LOCALAPPDATA%\Larian Studios\Baldur's Gate 3\Mods[/i] and enable it in your mod manager.[/color][/size][/*]
 [/list][/*]
 [*][size=3][color=#D4D4D8]Load a save and walk to one of the places above.[/color][/size][/*]
-[/list][size=3][color=#D4D4D8]It works in a new game and in an existing save. When an update moves a waypoint, it is moved in your save too.
-Removing it in the middle of a playthrough is not recommended: once a save has the waypoints, they are part of its story. The save still loads without the mod (the game warns that a mod is missing), but waypoints you unlocked may stay on the map without working.[/color][/size]
+[/list][size=3][color=#D4D4D8]It works in a new game and in an existing save. When an update moves a waypoint, it is moved in your save too.[/color][/size]
+
+[size=4][b]Removing the mod[/b][/size]
+[size=3][color=#D4D4D8]A save that has used the mod keeps its waypoints. Remove only the mod and a waypoint you unlocked stays in the travel list, without its name, and leads nowhere. Take the waypoints out first, with the uninstaller from Optional files:[/color][/size]
+[list=1]
+[*][size=3][color=#D4D4D8]Install [i]Not Enough Waypoints Uninstaller[/i] like the mod.[/color][/size][/*]
+[*][size=3][color=#D4D4D8]Turn [b]Not Enough Waypoints off[/b] and [b]the uninstaller on[/b] (BG3 Mod Manager: export the load order).[/color][/size][/*]
+[*][size=3][color=#D4D4D8]Load your save. The game says that Not Enough Waypoints is missing: carry on. Its waypoints are gone from the travel list.[/color][/size][/*]
+[*][size=3][color=#D4D4D8][b]Save.[/b][/color][/size][/*]
+[*][size=3][color=#D4D4D8]Turn the uninstaller off. The next time you load that save, the game says once that the uninstaller is missing: carry on, and save again.[/color][/size][/*]
+[/list][size=3][color=#D4D4D8]From that save on, the mod's waypoints are out of the playthrough. The uninstaller locks each waypoint the way the story locks a waypoint when its act ends, then takes it out of the story. It does nothing while the mod itself is loaded, so loading both by mistake breaks nothing. It also cleans up a save that the mod was removed from without it.[/color][/size]
 
 [size=4][b]Main features[/b][/size]
 [list]
@@ -37,6 +48,7 @@ Removing it in the middle of a playthrough is not recommended: once a save has t
 [*][size=3][color=#D4D4D8][b]They follow the story[/b]: each is locked with the rest of its act when the story moves on, like the game's own. The Hollow is also locked when the druids seal the Emerald Grove, together with the game's Grove waypoint, so it never gets you past the barrier.[/color][/size][/*]
 [*][size=3][color=#D4D4D8][b]Sovereign Glut comes along[/b]: the Arcane Tower counts as an Underdark waypoint, so he follows the party there.[/color][/size][/*]
 [*][size=3][color=#D4D4D8][b]Placed with the game's own data[/b]: every rune sits on a wall measured from the game's own tiles, or on a boulder resting on free floor from the game's navigation grid, clear of everything the game puts there, with room for the whole party in front. Nothing is a guessed coordinate.[/color][/size][/*]
+[*][size=3][color=#D4D4D8][b]Safe to remove[/b]: the uninstaller takes the waypoints out of a save before you remove the mod.[/color][/size][/*]
 [*][size=3][color=#D4D4D8][b]Nothing replaced[/b]: the mod adds its own objects, one small story script and the waypoint names. It replaces none of the game's files.[/color][/size][/*]
 [*][size=3][color=#D4D4D8][b]Multiplayer[/b]: waypoints unlock for the whole party, as usual.[/color][/size][/*]
 [/list]

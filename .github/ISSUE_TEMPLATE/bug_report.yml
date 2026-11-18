@@ -38,6 +38,7 @@ body:
       options:
         - I started a new game with the mod
         - I added the mod to a save I already had
+        - I was removing the mod (with or without the uninstaller)
     validations:
       required: true
 
@@ -45,7 +46,7 @@ body:
     id: mod-version
     attributes:
       label: Mod version
-      placeholder: "1.0.0"
+      placeholder: "1.2.0"
     validations:
       required: true
 

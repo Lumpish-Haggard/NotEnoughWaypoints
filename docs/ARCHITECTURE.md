@@ -72,6 +72,31 @@ For every waypoint `tools/build_waypoints.py` checks:
 
 An error that a waypoint's `accept` list names was looked at and judged harmless (in game, where it matters); it is reported as a warning, so that it stays visible. The checks know the box each object fills, which is loose around rocks, trees and big pieces of a building: a box that reaches the waypoint only gives a warning when two of its sides are longer than 4 m. They cannot see walkways (a waypoint can pass every check and still half-block a path), light, or how the spot looks. `tools/survey.py report <id>` lists everything around a waypoint for review, `tools/survey.py walls ...` and `spots ...` search a place for runes on walls and for boulders, and `tools/survey.py map ...` draws the floor plan with its walls. Testing in game covers the rest.
 
+## Removing the mod
+
+What a save keeps of the mod was read from a save made with it (`tools/inspect_save.py`):
+
+| Where | What | Without the mod's files |
+|---|---|---|
+| The story | the mod's goal and its records (`DB_NEW_WAYP_*`); its waypoints in the game's `DB_WaypointInfo`; who unlocked each (`DB_WaypointUnlocked`); the Arcane Tower in Sovereign Glut's list; after travel from another level, the story's record of which waypoint an arrival point belongs to | the goal and its own records go; the facts in the game's databases stay |
+| Each party | its travel list: the id, arrival point and level of each waypoint it unlocked | stays: listed without a name, leading nowhere, until the story locks its act |
+| The game | the waypoints registered for the map | stay; the game has no call to unregister one |
+| The objects | the shrines and arrival points (global objects, made from the mod's own) | their templates are gone with the mod's files |
+| The levels | the runes and boulders | not in the save: they go with the mod's files |
+
+**The uninstaller** (`Mods/NotEnoughWaypointsUninstaller/`) is a second mod: its `meta.lsx` and one story goal, generated from `waypoints.json` like the mod's own. It is loaded in place of the mod for one save:
+
+- Its INIT section lists every waypoint id, and names the mod's own list (`NOT DB_NEW_WAYP_Waypoint("")`) so that the list the save already holds stays readable once the mod's goal is gone; a waypoint of a later version is taken out too.
+- On `SavegameLoaded` (where the game applies its own savegame patches) and on every `LevelGameplayStarted`, for each id, in one rule: `PROC_LockWaypointForAll`, the game's own lock, which calls the engine's `LockWaypoint` for every player who unlocked it and so takes it out of every party's travel list; then any unlock records left; then the waypoint's `DB_WaypointInfo` fact. Separately, the id in Sovereign Glut's list and in the story's travel records. Doing it twice does nothing.
+- It never names an object: the shrine and the arrival point are found through the story, so nothing depends on the mod's objects still being there.
+- It does nothing while the mod's goal is running (`NOT SysIsActive("NotEnoughWaypoints")`): with both loaded, the mod would keep its objects but lose its waypoints for good, since its INIT section runs only once in a save.
+
+Put back later, the mod's goal is new to that save again: its INIT section adds the waypoints, and the rules above register them and put them where this version has them.
+
+## Checking the story
+
+The game compiles the story of every mod together with its own when a save is loaded. `tools/check_story.py` does the same with LSLib's StoryCompiler before a release: the mod alone, the uninstaller in its place, and both together, each against the game's story from your installation. The game ships no story header, so the check writes one from the function table of the game's compiled story (StoryDecompiler's debug log), and turns the enum constants in the game's goals (`DEATHTYPE.Chasm`), which LSLib cannot read, into the numbers they are. LSLib reports about a hundred messages about the game's own goals that the game's compiler accepts; the check compiles the game's story alone first and reports only what the repository's goals add. It found the planted mistakes it was tried with: a misspelt database, a procedure called with the wrong number of arguments, a parameter of the wrong type.
+
 ## Building
 
-`pack.ps1` stages `Mods/NotEnoughWaypoints/` and `Localization/`, converts the generated `.lsx` files to the binary `.lsf` the game loads and the names from `.xml` to `.loca`, packs everything with LSLib's `Divine.exe`, and then lists the pak: every expected file must be there, nothing else may be, and no unconverted source may slip in. It writes `info.json` for the mod managers and the release zip.
+`pack.ps1` builds two packages. For the mod it stages `Mods/NotEnoughWaypoints/` and `Localization/`, converts the generated `.lsx` files to the binary `.lsf` the game loads and the names from `.xml` to `.loca`, and packs everything with LSLib's `Divine.exe`; for the uninstaller, `Mods/NotEnoughWaypointsUninstaller/`. It then lists each pak: every expected file must be there, nothing else may be, and no unconverted source may slip in. It writes `info.json` for the mod managers into each release zip. Before that it runs `build_waypoints.py --check` and, where the game and ExportTool are installed, `check_story.py`.
