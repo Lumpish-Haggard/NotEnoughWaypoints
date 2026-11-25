@@ -45,9 +45,10 @@ And what it confirmed:
 | Version | Theme | What it brings |
 |---|---|---|
 | **1.1** (released) | Where it belongs | Tools that see the whole level and how far everything reaches; five waypoints moved, four of them onto a wall as the game does; moves that reach existing saves; every waypoint seen in game (still to come) |
-| **1.2** (released) | Safe to remove | The uninstaller, which takes the waypoints out of a save before the mod is removed (moved up from 1.4); a check that compiles the story with the game's; a tool that shows what a save holds of the mod |
-| **1.3** | Finishing touches | Runes on walls built of props (inside Moonrise's front doors), arriving facing into the place, the patch-day check |
+| **1.2** (released) | Safe to remove | The uninstaller, which takes the waypoints out of a save before the mod is removed (moved up from 1.4); a check that compiles the story with the game's; a tool that shows what a save holds of the mod. 1.2.1: the four runes on walls, which were smeared in game, onto boulders |
+| **1.3** (released) | Finishing touches | Arriving facing into the place, the patch-day check |
 | **1.4** | Every language | The names in all of the game's languages, in the game's own words |
+| **Later** | Runes on walls again | The four waypoints indoors back on walls, once the tools know which surfaces take a rune and the real shape of props |
 | **Later** | More waypoints | New places, placed and reviewed the same way |
 
 ## 1.1: where it belongs
@@ -76,12 +77,14 @@ Moved up from 1.4: a mod that cannot be taken out of a save again asks a lot of 
 
 Where this stands: released as 1.2.0, with everything above but the check in game, an exception to the sixth principle as in 1.1. If the uninstaller leaves anything behind, `inspect_save.py` on a save made after it shows what, and a 1.2 update takes that out too.
 
+**1.2.1.** The first look in game, after 1.2.0, found the four runes on walls drawn smeared over wall and floor. The tools had misread the walls: about a third of the game's wall tiles give their turn as a quaternion (`QRotate`), which they did not read, and some walls do not take a decal at all (`RecieveDecal`, false on the Arcane Tower's walls). With both read, none of the four places had a clean tile wall, so 1.2.1 put the four on boulders, at new places checked in game. The boulders work and look whole, but a boulder indoors is not how the game does it: see *Runes on walls again*.
+
 ## 1.3: finishing touches
 
-- **Walls built of props.** Moonrise Towers and the Open Hand Temple are built mostly of large props rather than wall tiles, so the checks can carry a rune only onto the few tile walls they have: Moonrise's rune is east of the bazaar, not inside the front doors where the game would put it. Reading the meshes of those props would show their faces, and let the rune go where it belongs.
-- **Arriving facing into the place.** Several of the game's arrival points are turned; ours all face the same way. If that decides which way the party faces on arrival, ours will face the traders and doors they are there for.
-- **The Hollow's rock.** In the wild the game often puts the rune on a rock that is already there. Whether the Hollow keeps the Blighted Village boulder or moves its rune onto the ledge behind it is decided once the wall runes have been seen in game.
-- **Patch-day check.** After a game patch, the tools compare what the story now does with the game's waypoints that ours follow, and say so when a lock or unlock was added or removed.
+- **Arriving facing into the place.** The game sets up its arrival points by hand: most of those it turns face their waypoint's shrine, and 22 of 37 set the camera's direction on arrival (`Angle`), most in one relation to the waypoint. Ours were all unturned, with the camera left alone. They now follow the game: turned to face their shrine, the camera in the game's usual relation (see `docs/ARCHITECTURE.md`, *Arrival*), and `trigger.camera` to frame a place by hand. Still to come: a look in game at what each setting does, arriving at the Hollow and at the game's own Grove waypoint, before and after; then a camera picked for each place that needs one.
+- **Patch-day check.** After a game patch, `build_waypoints.py` compares what the story does with what the waypoints follow against `story_baseline.json`, the record of the patch they were last checked on: the locks of their act groups, the locks and unlocks of the game's waypoint each starts from (`nextTo`, new in `waypoints.json`), the lock of everything at the epilogue, the travel zones over them, a fingerprint of the game's waypoint rules and Sovereign Glut's list. Each change is reported with the goal it is in; `--accept-story` records the story once they were looked at (see `docs/ARCHITECTURE.md`, *Patch day*).
+
+Where this stands: released as 1.3.0 without the look in game, an exception to the sixth principle as in 1.1 and 1.2. The patch-day check needs none; the arrival points do. If arriving at one of ours looks odd, a 1.3 update gives it a camera of its own (`trigger.camera`).
 
 ## 1.4: every language
 
@@ -90,6 +93,30 @@ Where this stands: released as 1.2.0, with everything above but the check in gam
 - **The other two**, Underdark - Arcane Tower and Moonrise Towers - Main Floor, are put together in each language from the game's own words: the "Underdark - " the game puts before its own Underdark waypoints, and its names for the Arcane Tower and Moonrise Towers. "Main Floor" needs a translator, or another name.
 - **Until then**, the English names ship for every language, so that no list shows an empty line.
 
+## Later: runes on walls again
+
+The Arcane Tower, the Shattered Sanctum, Moonrise Towers and the Guildhall stand on boulders since 1.2.1 ("a giant rock at the top of the stairs", as a player put it). They go back on walls once the groundwork below is solid and checked against the game's own runes.
+
+**How the game does it.** Of its 37 runes in these four levels, about half are on rocks and cliffs, most of them a rock placed for that waypoint (`S_..._WaypointShrine_geo`). The rest are on walls that are already there: fortress, temple and city walls built of tiles, and props too, such as a carved pillar at the Morphic Pool, a rubble wall in Baldur's Gate and a trim at Moonrise Towers. Where a building needs one, the game places a piece of it: a small ruined abbey wall carries the Goblin Camp's rune, and a castle-wall pillar the Basilisk Gate's (`S_PlateForWaypointSoItCanBeClicked`). One rune lies on the floor, like a teleport circle: Verge of the Shadows, where the shrine lies flat too.
+
+**The groundwork,** found in a first look (the scripts are kept out of the repository until they become tools):
+
+- **Which surfaces take a rune.** Props say it as tiles do: `RecieveDecal` in their root templates, passed down from parent templates. 1,256 templates refuse decals, 766 of them props. Every surface under one of the game's runes takes them.
+- **The real shape of props.** Their boxes are too loose to put a rune on. The models cannot be read (LSLib needs `granny2.dll`, which the game does not ship), but their collision shapes can: each template names a physics resource (`PhysicsTemplate`), whose file in `Models.pak` LSLib's `PhysicsTool` turns into boxes and convex meshes. Every one of the game's runes that sits on a prop lies on a collision face square to it, within half a metre of its centre, over nearly all its area. Two cautions: some props' collision does not follow what is seen (a carpet's is tall), so a face counts only inside the prop's visible box; and the shrine has collision of its own.
+- **The shrine is the click.** The invisible shrine's collision is a panel 3 m wide and 3 m tall standing on its foot: what players click. A smaller rune, or one raised above a wainscot, needs its shrine scaled or raised to match.
+- **Arrangements beyond the rune on a wall:** a smaller rune (0.55 to 0.9) for narrower faces; a rune raised above a wainscot; the floor rune of Verge of the Shadows; the Underdark's cliff slab (`NAT_Cliff_Granite_B_Wet`, the carrier at the Myconid Colony and the Sussur Tree).
+
+**The four places,** as they look with that groundwork:
+
+| Waypoint | What is there | Where the rune can go |
+|---|---|---|
+| Shattered Sanctum | A ruined abbey wall (a prop), 2 m from 1.1's place, takes a rune of 0.7 whole | On that wall |
+| Moonrise Towers - Main Floor | Abbey walls that take decals, with a stone wainscot 1.25 m high | Raised above the wainscot |
+| Guildhall | No prop wall; tile walls lined with wainscots, arches and furniture | Raised above a wainscot if a clear stretch exists; otherwise on the floor |
+| Underdark - Arcane Tower | The tower's walls refuse decals; the cave wall around the landing is terrain, not an object | A cliff slab set into the cave wall, as at the game's Underdark waypoints, or on the floor |
+
+Also here: **the Hollow's rock.** In the wild the game often puts the rune on a rock that is already there; whether the Hollow keeps its boulder or moves its rune onto the ledge behind it is decided with the rest. Nothing of this is released before a test build has been looked at in game.
+
 ## Later: more waypoints
 
 Ideas are welcome now, through the [waypoint idea form](../../../issues/new/choose). They will be placed with the same tools and go through the same review, after 1.1.
@@ -97,7 +124,7 @@ Ideas are welcome now, through the [waypoint idea form](../../../issues/new/choo
 ## How to help
 
 - **Report what looks wrong.** A boulder in the way, a rune that is not whole on its wall or its rock, a party arriving somewhere awkward: use the placement form and attach a screenshot.
-- **Look at a waypoint in game.** None of the five places 1.1 moved to has been seen in game yet. A screenshot of a rune on its wall, from the front and at an angle, settles the most: whether it is whole, and whether any of it shows on the floor, on furniture or on the far side of the wall.
+- **Suggest a wall.** For the four waypoints indoors, a screenshot of a bare stretch of wall (or pillar, or cave wall) near the boulder helps choose where the rune goes back to.
 - **Translate the two names** the game has no words for, once 1.4 starts.
 - **Try the uninstaller** on a copy of a save: say what the travel list and the map show afterwards.
 

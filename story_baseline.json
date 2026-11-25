@@ -1,0 +1,63 @@
+{
+  "patch": "Patch8_HotFix10",
+  "follows": {
+    "neighbours": {
+      "NEW_WAYP_DEN_Hollow": "WAYP_DEN_Camp",
+      "NEW_WAYP_GOB_Sanctum": "WAYP_GOB_Temple",
+      "NEW_WAYP_LOW_Guildhall": "WAYP_LOW_Cesspool",
+      "NEW_WAYP_MOO_MainFloor": "WAYP_MOO_TowerExterior",
+      "NEW_WAYP_UND_ArcaneTower": "WAYP_UND_Beach",
+      "NEW_WAYP_WYR_OpenHandTemple": "WAYP_WYR_Rivington"
+    },
+    "groups": {
+      "Act1": [
+        "PROC_LockAllGroupWaypoints in GustavDev/Act2_General",
+        "PROC_LockAllGroupWaypoints in GustavDev/Act2b_INT_EmperorRevealed"
+      ],
+      "Act2": [
+        "PROC_LockAllGroupWaypoints in GustavDev/Act2b_INT_EmperorRevealed",
+        "PROC_LockAllGroupWaypoints in GustavDev/Act3_WYR_General"
+      ],
+      "Act3": [],
+      "Act3b": []
+    },
+    "waypoints": {
+      "WAYP_DEN_Camp": [
+        "PROC_LockWaypointForAll in Gustav/Act1_DEN_Lockdown",
+        "PROC_UnlockWaypoint in Gustav/Act1_DEN_Gate"
+      ],
+      "WAYP_GOB_Temple": [],
+      "WAYP_LOW_Cesspool": [],
+      "WAYP_MOO_TowerExterior": [
+        "PROC_UnlockWaypointForAll in GustavDev/Act2_MOO_Misc"
+      ],
+      "WAYP_UND_Beach": [],
+      "WAYP_WYR_Rivington": []
+    },
+    "all": [
+      "PROC_LockAllUnlockedWaypoints in GustavDev/Act3c_EPI_MainEpilogue",
+      "PROC_LockAllUnlockedWaypoints in Shared/_Waypoints",
+      "PROC_LockAllUnlockedWaypoints in Shared/_Waypoints (a rule run by it)"
+    ],
+    "zones": {
+      "NEW_WAYP_DEN_Hollow": [],
+      "NEW_WAYP_GOB_Sanctum": [],
+      "NEW_WAYP_LOW_Guildhall": [],
+      "NEW_WAYP_MOO_MainFloor": [
+        "danger zone MOO_Assault_DangerZone on S_MOO_DangerZoneTrigger (GustavDev/Act2_MOO_Assault)",
+        "danger zone MOO_Assault_DangerZone on S_MOO_DangerZoneTrigger (GustavDev/Act2_MOO_NightsongDeath)"
+      ],
+      "NEW_WAYP_UND_ArcaneTower": [],
+      "NEW_WAYP_WYR_OpenHandTemple": []
+    },
+    "rules": {
+      "_Waypoints": "ba8ad85d4f6639d7"
+    },
+    "underdark": [
+      "WAYP_UND_Beach",
+      "WAYP_UND_Fort",
+      "WAYP_UND_Myconid",
+      "WAYP_UND_Sussur"
+    ]
+  }
+}

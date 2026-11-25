@@ -6,6 +6,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 Nothing yet.
 
+## [1.3.0] - 2026-11-26
+
+Finishing touches from the [roadmap](docs/ROADMAP.md): arriving the way the game's own waypoints arrive, and a check for game patches. The arrival points have not been seen in game yet: if arriving at one looks odd, please report it. Putting the four waypoints indoors back on walls is planned for later, once the tools are ready for it.
+
+### Changed
+- **Arrival points are set up like the game's own.** The game turns most of its waypoints' arrival points, most of those to face their waypoint, and sets the direction of the camera on arrival on most of them; ours were all unturned, with the camera left as it was. They are now turned to face their waypoint, and set the camera in the relation most of the game's own keep. In a save made before, an arrival point keeps its old turn (the game's scripts never turn one).
+
+### Added
+- **The patch-day check.** After a game patch, `build_waypoints.py` compares what the game's story does with what the waypoints follow (the locks of their act groups, the locks and unlocks of the game's waypoint each starts from, the lock of everything at the epilogue, the travel zones over them, the game's waypoint rules and Sovereign Glut's list) against `story_baseline.json`, the record of Patch 8 Hotfix 10, and reports every change with the goal it is in. `--accept-story` records the story once the changes were looked at.
+- `nextTo` in `waypoints.json`: the game's own waypoint that players walk from today, which the check watches.
+- `trigger.yaw` and `trigger.camera` in `waypoints.json`, to turn an arrival point or pick the camera by hand.
+
 ## [1.2.1] - 2026-11-18
 
 Fixes the four waypoints whose runes appeared smeared in 1.1 and 1.2 (Underdark - Arcane Tower, Shattered Sanctum, Moonrise Towers - Main Floor and Guildhall). All six waypoints have been seen and checked in game on Patch 8 Hotfix 10. Existing saves update automatically when each level is loaded.
@@ -73,7 +85,8 @@ First public release.
 - Developer tools: game-data extraction from your own install, a reader for the game's navigation grid, a survey tool that finds and checks places for new waypoints, a generator that writes every mod file from `waypoints.json` and checks each waypoint against the game, tests, and a packager that verifies the pak and builds the release zip.
 - GitHub project files: contributing guide, code of conduct, security policy, issue forms, pull request template, CI, and a workflow that publishes releases on Nexus Mods.
 
-[Unreleased]: ../../compare/v1.2.1...HEAD
+[Unreleased]: ../../compare/v1.3.0...HEAD
+[1.3.0]: ../../compare/v1.2.1...v1.3.0
 [1.2.1]: ../../compare/v1.2.0...v1.2.1
 [1.2.0]: ../../compare/v1.1.0...v1.2.0
 [1.1.0]: ../../compare/v1.0.0...v1.1.0

@@ -27,10 +27,14 @@ Sub-levels
 Story goals (.txt)
   story() collects what the game's story does with waypoints and travel: every lock and
   unlock of a waypoint (and of a whole group), the danger zones (no travel out while
-  active), the blocked waypoint zones (no waypoints at all) and the safe bubbles.
+  active), the blocked waypoint zones (no waypoints at all) and the safe bubbles; a
+  fingerprint of the game's waypoint rules (_Waypoints), and the waypoints Sovereign Glut
+  follows the party between. After a game patch, build_waypoints.py compares these with
+  what they were when the waypoints were last checked (story_baseline.json).
 """
 from __future__ import annotations
 
+import hashlib
 import math
 import re
 import xml.etree.ElementTree as ET
@@ -315,6 +319,8 @@ RX_LOCK_ALL = re.compile(r"\bPROC_LockAllUnlockedWaypoints\(\s*\)")
 RX_DANGER = re.compile(r'^[ \t]*(NOT\s+)?DB_DangerZone\(\s*(?:\(TRIGGER\))?\s*' + _GUID + r'\s*,\s*"(\w*)"\s*\)\s*;', re.M)
 RX_BLOCKED = re.compile(r'^[ \t]*(NOT\s+)?DB_BlockedWaypointZone\(\s*(?:\(TRIGGER\))?\s*' + _GUID + r'\s*\)\s*;', re.M)
 RX_SAFE = re.compile(r'^[ \t]*(NOT\s+)?DB_DangerZone_SafeBubble\(\s*(?:\(TRIGGER\))?\s*' + _GUID + r'\s*\)\s*;', re.M)
+RX_UNDERDARK = re.compile(r'^[ \t]*DB_UND_BroodingSpovereign_UnderdarkWaypoints\(\s*"(\w+)"\s*\)\s*;', re.M)
+WATCHED_GOALS = ("_Waypoints",)   # the game's waypoint rules (Shared): any change to them needs a look
 RX_LINE_COMMENT = re.compile(r"//.*$", re.M)
 RX_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
 
@@ -325,17 +331,27 @@ def strip_comments(text):
     return RX_LINE_COMMENT.sub("", text)
 
 
+def fingerprint(code):
+    """A short fingerprint of Osiris code that changes only when the code does: comments and spacing
+    are left out."""
+    return hashlib.sha256(" ".join(strip_comments(code).split()).encode("utf-8")).hexdigest()[:16]
+
+
 def story(goals):
     """What the story does with waypoints and travel.
 
     goals: iterable of (module, goal name, text). Returns
       {"waypoints": {id: [call]}, "groups": {group: [call]}, "all": [call],
-       "zones": {trigger GUID: [{"type": "danger"|"blocked"|"safe", "id", "goal", "module", "line", "removed"}]}}
+       "zones": {trigger GUID: [{"type": "danger"|"blocked"|"safe", "id", "goal", "module", "line", "removed"}]},
+       "rules": {goal: fingerprint} for the goals in WATCHED_GOALS, "underdark": [waypoint id]}
     where a call is {"call", "goal", "module", "line", "listener"}: listener is True when the
     line declares a rule that runs whenever the story makes that call (PROC ... THEN), not a call."""
-    out = {"waypoints": {}, "groups": {}, "all": [], "zones": {}}
+    out = {"waypoints": {}, "groups": {}, "all": [], "zones": {}, "rules": {}, "underdark": []}
     for module, goal, text in goals:
         code = strip_comments(text)
+        if goal in WATCHED_GOALS:
+            out["rules"][goal] = fingerprint(text)
+        out["underdark"] += RX_UNDERDARK.findall(code)
         code_lines = code.splitlines()
         for i, line in enumerate(code_lines):
             previous = next((code_lines[j].strip() for j in range(i - 1, -1, -1) if code_lines[j].strip()), "")
@@ -356,4 +372,5 @@ def story(goals):
                 out["zones"].setdefault(m.group(2), []).append({
                     "type": kind, "id": zone_id, "goal": goal, "module": module, "line": line,
                     "removed": bool(m.group(1))})
+    out["underdark"] = sorted(set(out["underdark"]))
     return out

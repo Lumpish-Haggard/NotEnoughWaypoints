@@ -16,7 +16,7 @@
 </div>
 
 > [!NOTE]
-> **Version 1.2.1 fixes the four smeared runes from 1.1 and 1.2.** Underdark - Arcane Tower, Shattered Sanctum, Moonrise Towers - Main Floor and Guildhall now sit on boulders at clean new spots, and all six waypoints have been seen and checked in game on Patch 8 Hotfix 10. Existing saves update automatically when each level is loaded. **Not Enough Waypoints Uninstaller** (added in 1.2) takes the waypoints out of a save so that the mod can be removed in the middle of a playthrough: see [Removing the mod](#removing-the-mod). What comes next is in [what is planned](docs/ROADMAP.md).
+> **Version 1.3 sets up the arrival points the way the game sets up its own:** turned to face their waypoint, with the camera's direction on arrival. They have not been seen in game yet; if arriving at one looks odd, please [report it](../../issues/new/choose). Version 1.2.1 put Underdark - Arcane Tower, Shattered Sanctum, Moonrise Towers - Main Floor and Guildhall on boulders at clean spots, and all six waypoints were seen and checked in game on Patch 8 Hotfix 10. **Not Enough Waypoints Uninstaller** (added in 1.2) takes the waypoints out of a save so that the mod can be removed in the middle of a playthrough: see [Removing the mod](#removing-the-mod). What comes next, the four indoors back on walls among it, is in [what is planned](docs/ROADMAP.md).
 
 ---
 
@@ -156,6 +156,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/ARCHITECTURE.md](docs/ARCHITECT
 
 ```
 waypoints.json                    the waypoints: name, act, and where the shrine and the arrival point stand
+story_baseline.json               what the game's story did with what the waypoints follow, on the patch they were last checked on
 Mods/NotEnoughWaypoints/          the mod (what goes into the .pak)
   meta.lsx
   Globals/<level>/Items/          invisible shrines      )
