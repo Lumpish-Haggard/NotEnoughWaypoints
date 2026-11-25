@@ -14,7 +14,8 @@ and, for the whole game:
   * what the story does with waypoints and travel: every lock
     and unlock, the danger zones and blocked waypoint zones    -> tools/.cache/story.json
 
-Run it again after a game patch, then run build_waypoints.py to check the waypoints.
+Run it again after a game patch, then run build_waypoints.py to check the waypoints, and what
+the story now does with what they follow (against story_baseline.json).
 
 Usage:
   python tools/extract_game_data.py [--levels WLD_Main_A,SCL_Main_A] [--divine PATH\\TO\\Divine.exe] [--game PATH\\TO\\Baldurs Gate 3]

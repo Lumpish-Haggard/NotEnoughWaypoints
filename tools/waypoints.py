@@ -150,6 +150,31 @@ def shrine_yaw(wp) -> float:
     return float(s["yaw"]) if "yaw" in s else facing_yaw(s["position"], wp["trigger"]["position"])
 
 
+# Arrival points, set up the way the game sets up its own (its 37 waypoints in these levels, read from
+# Globals/<level>/Triggers): it turns 27 of them, 17 of those so that their +z points at their waypoint's
+# shrine to within 30 degrees (14 to within 15), and 22 set the direction of the camera on arrival ("Angle",
+# in degrees; -1 leaves the camera as it is). Larian picks each camera by hand, but most keep one relation to
+# the waypoint: Angle minus the compass direction from the shrine to the arrival point is 225 degrees at the
+# median, and within 30 degrees of it at 14 of the 22.
+ARRIVAL_CAMERA_OFFSET = 225
+
+
+def arrival_yaw(wp) -> float:
+    """The arrival point's turn: its +z towards the shrine, as the game turns most of its own."""
+    t = wp["trigger"]
+    return float(t["yaw"]) if "yaw" in t else facing_yaw(wp["shrine"]["position"], t["position"])
+
+
+def arrival_camera(wp) -> int:
+    """The camera's direction on arrival (the trigger's "Angle", degrees), unless the waypoint picks one."""
+    t = wp["trigger"]
+    if "camera" in t:
+        return int(t["camera"])
+    s, p = wp["shrine"]["position"], t["position"]
+    out = math.degrees(math.atan2(p[0] - s[0], p[2] - s[2]))
+    return int(round(((out + ARRIVAL_CAMERA_OFFSET) % 360) / 5.0) * 5) % 360
+
+
 def place(shrine_position, yaw, offset, rotation=None):
     """World position (and rotation) of a part given in the shrine's frame."""
     q = quat_yaw(yaw)
@@ -361,6 +386,12 @@ def problems(data: dict) -> list[str]:
             out.append("%s: shrine.yaw must be a number of degrees" % where)
         if style == "wall" and "yaw" not in wp.get("shrine", {}):
             out.append("%s: a rune on a wall needs shrine.yaw, the way the wall faces" % where)
+        trig = wp.get("trigger", {}) if isinstance(wp.get("trigger"), dict) else {}
+        if "yaw" in trig and not isinstance(trig["yaw"], (int, float)):
+            out.append("%s: trigger.yaw must be a number of degrees" % where)
+        if "camera" in trig and (not isinstance(trig["camera"], int) or isinstance(trig["camera"], bool)
+                                 or not (trig["camera"] == -1 or 0 <= trig["camera"] < 360)):
+            out.append("%s: trigger.camera must be whole degrees from 0 to 359, or -1 to leave the camera alone" % where)
         placement = wp.get("placement", 1)
         if not isinstance(placement, int) or isinstance(placement, bool) or placement < 1:
             out.append("%s: placement must be a whole number from 1 (raise it by one whenever a released "
@@ -383,6 +414,8 @@ def problems(data: dict) -> list[str]:
         lock = wp.get("lockWith")
         if lock is not None and not re.match(r"^WAYP_[A-Za-z0-9_]+$", str(lock)):
             out.append("%s: lockWith must be the id of one of the game's own waypoints" % where)
+        if not re.match(r"^WAYP_[A-Za-z0-9_]+$", str(wp.get("nextTo", ""))):
+            out.append("%s: nextTo must be the id of the game's own waypoint the walk starts from" % where)
         if positions == 2:
             s, t = wp["shrine"]["position"], wp["trigger"]["position"]
             d = math.hypot(t[0] - s[0], t[2] - s[2])
@@ -966,6 +999,73 @@ def story_zones(level: Level, story: dict, point):
     return [(o, zones[o["key"]]) for o in level.volumes if o["key"] in zones and inside_volume(o, point)]
 
 
+# --------------------------------------------------------------------- patch day
+
+BASELINE_FILE = os.path.join(ROOT, "story_baseline.json")
+
+
+def calls(entries) -> list[str]:
+    """Story call sites as sentences without their line numbers, which move with any edit to a goal."""
+    counted = {}
+    for e in entries:
+        key = "%s in %s/%s%s" % (e["call"], e["module"], e["goal"], " (a rule run by it)" if e.get("listener") else "")
+        counted[key] = counted.get(key, 0) + 1
+    return sorted(k if n == 1 else "%s (%d times)" % (k, n) for k, n in counted.items())
+
+
+def followed_story(waypoints, story, neighbours, zones) -> dict:
+    """What the game's story does with what the waypoints follow: the act groups they are in (locked
+    when the story leaves an act), the game's waypoint next to each (which ours lock and unlock with)
+    and every lockWith, the epilogue's lock of everything, the travel zones over each of ours, the
+    fingerprint of the game's waypoint rules, and the waypoints Sovereign Glut follows the party to.
+
+    neighbours: {our id: the game's waypoint next to it, or None}; zones: {our id: [zone sentences]}."""
+    followed = {n for n in neighbours.values() if n} | {wp["lockWith"] for wp in waypoints if wp.get("lockWith")}
+    return {
+        "neighbours": {k: neighbours[k] for k in sorted(neighbours)},
+        "groups": {g: calls(story.get("groups", {}).get(g, [])) for g in sorted({wp["group"] for wp in waypoints})},
+        "waypoints": {w: calls(story.get("waypoints", {}).get(w, [])) for w in sorted(followed)},
+        "all": calls(story.get("all", [])),
+        "zones": {k: sorted(zones[k]) for k in sorted(zones)},
+        "rules": dict(sorted(story.get("rules", {}).items())),
+        "underdark": sorted(set(story.get("underdark", []))),
+    }
+
+
+def story_changes(old: dict, new: dict) -> list[str]:
+    """What changed between two followed_story() records, as sentences; [] when nothing did."""
+    out = []
+
+    def lists(section, what):
+        a, b = old.get(section, {}), new.get(section, {})
+        for key in sorted(set(a) | set(b)):
+            for c in sorted(set(b.get(key, [])) - set(a.get(key, []))):
+                out.append("%s: the story now also has %s" % (what % key, c))
+            for c in sorted(set(a.get(key, [])) - set(b.get(key, []))):
+                out.append("%s: the story no longer has %s" % (what % key, c))
+
+    lists("groups", "the act group %s")
+    lists("waypoints", "the game's waypoint %s")
+    lists("zones", "the travel zones over %s")
+    for c in sorted(set(new.get("all", [])) - set(old.get("all", []))):
+        out.append("the lock of every waypoint: the story now also has %s" % c)
+    for c in sorted(set(old.get("all", [])) - set(new.get("all", []))):
+        out.append("the lock of every waypoint: the story no longer has %s" % c)
+    a, b = old.get("neighbours", {}), new.get("neighbours", {})
+    for k in sorted(set(a) | set(b)):
+        if a.get(k) != b.get(k):
+            out.append("%s: the game's waypoint next to it is now %s (was %s)" % (k, b.get(k), a.get(k)))
+    a, b = old.get("rules", {}), new.get("rules", {})
+    for k in sorted(set(a) | set(b)):
+        if a.get(k) != b.get(k):
+            out.append("the game's waypoint rules (%s) changed: read the goal for anything ours depend on" % k)
+    a, b = set(old.get("underdark", [])), set(new.get("underdark", []))
+    if a != b:
+        out.append("Sovereign Glut's Underdark waypoints changed: now also %s; no longer %s" % (
+            ", ".join(sorted(b - a)) or "none", ", ".join(sorted(a - b)) or "none"))
+    return out
+
+
 def load_story(cache: str = CACHE) -> dict:
     path = os.path.join(cache, "story.json")
     if not os.path.exists(path):
@@ -980,3 +1080,12 @@ def cache_version(cache: str = CACHE):
         return None
     with open(path, encoding="utf-8") as fh:
         return json.load(fh).get("version", 1)
+
+
+def cache_patch(cache: str = CACHE):
+    """The newest game patch package the cache was read from (Patch8_HotFix10), or None."""
+    path = os.path.join(cache, "manifest.json")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh).get("latest_hotfix")

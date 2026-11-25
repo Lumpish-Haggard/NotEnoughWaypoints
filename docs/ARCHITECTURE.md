@@ -9,7 +9,7 @@ The game builds every waypoint from the same pieces, and this mod uses the same 
 | Shrine | An **invisible** item made from the game's waypoint template (`Helper_Waypoint_A`, `2dab7df1-...`): what players use. Its behaviour script unlocks the waypoint when a player comes within 18 m and can see it. | `Globals/<level>/Items/` (global: the story refers to it from anywhere) |
 | What carries the rune | What players see. The game has no waypoint model: in towns, fortresses and dungeons the rune is drawn on a wall that is already there; in the open and in caves on a rock or cliff piece, usually placed by hand for that waypoint. | the level itself, or `Levels/<level>/Scenery/` |
 | Rune | A decal (`DCL_Waypoint_Dark_A` or `DCL_Waypoint_Light_A`) projected onto the wall or the rock. | `Levels/<level>/Decals/` |
-| Arrival point | A teleport trigger (`TeleportTrigger`, `f7bd7465-...`) on the floor in front of the shrine. Travelling puts the party there. | `Globals/<level>/Triggers/` |
+| Arrival point | A teleport trigger (`TeleportTrigger`, `f7bd7465-...`) on the floor in front of the shrine. Travelling puts the party there. Its turn and its `Angle` (the camera's direction on arrival, -1 to leave the camera alone) are set as the game sets those of its own waypoints: see *Arrival*. | `Globals/<level>/Triggers/` |
 | Story fact | `DB_WaypointInfo(group, id, shrine, arrival point)` | a story goal |
 | Name | A translated-string key named after the waypoint id, pointing at the name's localisation handle | `Mods/<mod>/Localization/*.lsf` and `Localization/<Language>/*.loca` |
 
@@ -72,6 +72,15 @@ For every waypoint `tools/build_waypoints.py` checks:
 
 An error that a waypoint's `accept` list names was looked at and judged harmless (in game, where it matters); it is reported as a warning, so that it stays visible. The checks know the box each object fills, which is loose around rocks, trees and big pieces of a building: a box that reaches the waypoint only gives a warning when two of its sides are longer than 4 m. They cannot see walkways (a waypoint can pass every check and still half-block a path), light, or how the spot looks. `tools/survey.py report <id>` lists everything around a waypoint for review, `tools/survey.py walls ...` and `spots ...` search a place for runes on walls and for boulders, and `tools/survey.py map ...` draws the floor plan with its walls. Testing in game covers the rest.
 
+## Arrival
+
+The game's 37 waypoints in these levels set up their arrival points by hand (read from `Globals/<level>/Triggers`):
+
+- **The turn.** The game turns 27 of them; 17 of those point their +z at their waypoint's shrine to within 30 degrees (14 to within 15), and the other 10 are not turned at all. Ours are turned to face their shrine (`arrival_yaw`), unless `trigger.yaw` says otherwise. A test gives back the turn of five of the game's arrival points from their shrine and arrival point.
+- **The camera.** 22 set `Angle`, the direction of the camera on arrival in degrees (the template's default, -1, leaves the camera as it is). Each is picked by hand, but most keep one relation to the waypoint: `Angle` minus the compass direction from the shrine to the arrival point is 225 degrees at the median, and within 30 degrees of it at 14 of the 22. Ours keep that relation, rounded to 5 degrees as Larian's are (`arrival_camera`), unless `trigger.camera` picks a view.
+
+What each does on screen is not written down anywhere; the game's own scripts set a character's facing separately after a teleport where they need it (`LookFromTrigger`). The game's scripts also never turn a trigger, so in a save made before, an arrival point keeps the turn it had; `Angle` belongs to the arrival point's template, the mod's own object.
+
 ## Removing the mod
 
 What a save keeps of the mod was read from a save made with it (`tools/inspect_save.py`):
@@ -96,6 +105,21 @@ Put back later, the mod's goal is new to that save again: its INIT section adds 
 ## Checking the story
 
 The game compiles the story of every mod together with its own when a save is loaded. `tools/check_story.py` does the same with LSLib's StoryCompiler before a release: the mod alone, the uninstaller in its place, and both together, each against the game's story from your installation. The game ships no story header, so the check writes one from the function table of the game's compiled story (StoryDecompiler's debug log), and turns the enum constants in the game's goals (`DEATHTYPE.Chasm`), which LSLib cannot read, into the numbers they are. LSLib reports about a hundred messages about the game's own goals that the game's compiler accepts; the check compiles the game's story alone first and reports only what the repository's goals add. It found the planted mistakes it was tried with: a misspelt database, a procedure called with the wrong number of arguments, a parameter of the wrong type.
+
+## Patch day
+
+A game patch can change what the story does with the game's waypoints that ours follow: lock an act's waypoints at another moment, stop locking the Grove, change the waypoint rules themselves. After a patch, `tools/extract_game_data.py` reads the story again, and `tools/build_waypoints.py` compares what it does with what the waypoints follow against `story_baseline.json`, the record of the patch they were last checked on:
+
+| What | Why ours follow it |
+|---|---|
+| The locks and unlocks of their act groups (`PROC_LockAllGroupWaypoints`) | the story locks a whole act's waypoints when it leaves the act, ours included |
+| The locks and unlocks of the game's waypoint each starts from (`nextTo`), and of every `lockWith` | ours are locked and unlocked with the game's waypoint next to them |
+| The lock of every waypoint (`PROC_LockAllUnlockedWaypoints`, at the epilogue) | it takes ours too |
+| The travel zones over each shrine and arrival point | a danger zone or a blocked waypoint zone changes what a waypoint does there |
+| A fingerprint of the game's waypoint rules (`_Waypoints`), comments and spacing left out | ours rely on them for everything: registering, unlocking, travel, locking |
+| The waypoints Sovereign Glut follows the party between | the Arcane Tower is added to that list |
+
+Call sites are compared without their line numbers, which move with any edit to a goal. Each change is a warning that names the goal. Once each has been looked at, and a waypoint that should follow a new lock has been given `lockWith`, `build_waypoints.py --accept-story` records the story for the new patch. When nothing changed, the check says so, and `--accept-story` notes the new patch in the record. A test checks that the record covers every waypoint, so adding one means recording the story again.
 
 ## Building
 

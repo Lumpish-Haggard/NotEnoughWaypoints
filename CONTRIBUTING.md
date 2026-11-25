@@ -45,8 +45,10 @@ py tools/survey.py map SCL_Main_A -155 21.4 -171 --try -156.5 -170.75 -154.75 -1
 
 # 4. Add the entry to waypoints.json (walls and spots print one with fresh GUIDs).
 
-# 5. Check it and regenerate the mod files (commit them with your change).
+# 5. Check it and regenerate the mod files (commit them with your change). A new waypoint, or one
+#    that changes group or nextTo, also needs the story it follows recorded (story_baseline.json).
 py tools/build_waypoints.py
+py tools/build_waypoints.py --accept-story
 
 # 6. Review everything around it: what each check found, the story's regions it stands in,
 #    and the objects nearby with the sub-level each comes from.
@@ -66,11 +68,14 @@ py -m unittest discover -s tests
 | `name` | What the map shows. Plain ASCII, at most 40 characters, and not a name the game already uses. Use the game's own name for the place where it has one. |
 | `where` | A sentence for people: where it is, who is near. It is copied into the story script as a comment. |
 | `level`, `group` | The level the waypoint is in, and the act group that goes with it (`WLD_Main_A` Act1, `SCL_Main_A` Act2, `BGO_Main_A` Act3, `CTY_Main_A` Act3b). The story locks a whole group when it leaves that act. |
+| `nextTo` | The id of the game's own waypoint that players walk from today (the README's table names it). The patch-day check watches what the story does with it. |
 | `handle` | The localisation handle of the name. New ones come from `survey.py spots`. |
 | `style` | `wall` for the rune on a wall the game already has (in and against buildings), or `boulder` (the default) for the Blighted Village boulder and rune (in the open). |
 | `shrine.position` | Where the (invisible) shrine stands: for a rune on a wall, on the wall's face; for a boulder, where the boulder's front meets the floor. Its height is the floor's plus 2.6 cm. `survey.py` works these out. |
 | `shrine.yaw` | The way the rune faces. Needed for a rune on a wall (the way the wall faces); a boulder turns its rune towards the arrival point unless this says otherwise. |
 | `trigger.position` | The arrival point, on the floor. |
+| `trigger.yaw` | Optional. The arrival point's turn, in degrees. Without it, its +z points at the shrine, as the game turns most of its own. |
+| `trigger.camera` | Optional. The camera's direction on arrival (`Angle`), whole degrees from 0 to 359, or -1 to leave the camera as it is. Without it, the camera keeps the relation most of the game's own waypoints keep (see `docs/ARCHITECTURE.md`, *Arrival*); set it after a look in game to frame what players come for. |
 | `decal.style` | `dark` (Acts 1 and 2, cellars and caves) or `light` (Baldur's Gate streets), as the game does. |
 | `rock.style` | A boulder's colour: `grey`, `grey_wet`, `grey_moss`, `brown` or `brown_moss`. One mesh, different materials, so any of them fits. A rune on a wall has no `rock`. |
 | `shrine.guid`, `trigger.guid`, `decal.guid`, `rock.guid` | New random GUIDs. Never reuse or change a released one. |
@@ -89,6 +94,18 @@ How the pieces fit together, and what the checks look for, is in [docs/ARCHITECT
 - Out of the way: a boulder is 3 m wide and reaches 2.3 m behind the shrine, so keep it out of doorways and paths (draw it with `map --try`; the checks cannot see walkways) and off spots where the story sends characters (the checks warn about those).
 - Where travelling in cannot skip the story. A waypoint behind a door or barrier that the story keeps shut lets players walk around it, so use `lockWith`, or choose another spot.
 - Not in a place where fast travel is blocked for the whole visit (a danger zone such as the House of Hope): players could travel in, but not out again.
+
+## After a game patch
+
+```powershell
+py tools/extract_game_data.py                 # read the levels and the story of the new patch
+py tools/build_waypoints.py                   # check every waypoint; "patch day:" warnings list what the story
+                                              # now does differently with what the waypoints follow
+py tools/check_story.py                       # compile the story with the new patch's
+py tools/build_waypoints.py --accept-story    # once each change was looked at: record the story for this patch
+```
+
+Look at each "patch day" change in the goal it names. A new lock of the game's waypoint next to one of ours, or of its act, is the usual one: if ours should follow it, give it `lockWith`. Commit `story_baseline.json` with the rest; its `patch` says which patch the waypoints were last checked on.
 
 ## Code guidelines
 

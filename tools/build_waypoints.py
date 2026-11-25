@@ -24,15 +24,20 @@ What it checks
     floor under the boulder and the arrival point, room for the party, nothing in the way, no
     floor overhead; for a rune on a wall, a wall behind all of it and nothing in front), the
     story's travel zones, and no clash with the game's own waypoint ids, names or object GUIDs
+  * patch day: what the game's story does with what the waypoints follow (their act groups, the
+    game's waypoint each starts from (nextTo), the travel zones over them, the game's waypoint rules), against
+    story_baseline.json, the record of the patch they were last checked on
 
 Usage:
   python tools/build_waypoints.py                  # check, then write the files
   python tools/build_waypoints.py --check          # check only, and that the files are up to date (CI)
   python tools/build_waypoints.py --check --version 1.0.0
+  python tools/build_waypoints.py --accept-story   # after a patch: record the story, once its changes were looked at
 """
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import sys
@@ -41,9 +46,10 @@ import xml.etree.ElementTree as ET
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from waypoints import (CACHE, CACHE_VERSION, DATA_FILE, DECAL_DIMENSIONS, DECAL_TEMPLATES, MOD, ROCK_SCALE,  # noqa: E402
                        ROCK_TEMPLATES, ROOT, SHRINE_TEMPLATE, TRIGGER_TEMPLATE, UNINSTALLER, WALL_DECAL_DIMENSIONS,
-                       WALL_DECAL_SCALE, Level, cache_version, check_placement, decal_transform, describe, load,
-                       load_story, num, object_names, parts_of, problems, quat_yaw, rock_transform, shrine_yaw,
-                       story_zones, vanilla_waypoints, wall_decal_transform)
+                       WALL_DECAL_SCALE, BASELINE_FILE, Level, arrival_camera, arrival_yaw, cache_patch, cache_version,
+                       check_placement, followed_story, story_changes,
+                       decal_transform, describe, load, load_story, num, object_names, parts_of, problems, quat_yaw,
+                       rock_transform, shrine_yaw, story_zones, vanilla_waypoints, wall_decal_transform)
 
 MOD_DIR = os.path.join(ROOT, "Mods", MOD)
 GENERATED_DIRS = [os.path.join(MOD_DIR, "Globals"), os.path.join(MOD_DIR, "Levels")]
@@ -134,7 +140,8 @@ def level_files(wp):
             game_object(level, wp["shrine"]["guid"], names["shrine"], SHRINE_TEMPLATE, "item", shrine, quat_yaw(yaw)),
         os.path.join(MOD_DIR, "Globals", level, "Triggers", wp["trigger"]["guid"] + ".lsx"):
             game_object(level, wp["trigger"]["guid"], names["trigger"], TRIGGER_TEMPLATE, "trigger",
-                        wp["trigger"]["position"], (0, 0, 0, 1), extra=[("Angle", "float", "-1")],
+                        wp["trigger"]["position"], quat_yaw(arrival_yaw(wp)),
+                        extra=[("Angle", "float", str(arrival_camera(wp)))],
                         children_before=['<node id="FadeChildren" />']),
         os.path.join(MOD_DIR, "Levels", level, "Decals", wp["decal"]["guid"] + ".lsx"):
             game_object(level, wp["decal"]["guid"], names["decal"], DECAL_TEMPLATES[wp["decal"]["style"]], "decal",
@@ -470,6 +477,12 @@ def check_game(waypoints, errors, warnings):
                 errors.append("%s: the game's %s is also called '%s'" % (wp["id"], names[wp["name"].lower()], wp["name"]))
             if wp.get("lockWith") and wp["lockWith"] not in ids:
                 errors.append("%s: lockWith %s is not one of the game's waypoints" % (wp["id"], wp["lockWith"]))
+            groups = {v["id"]: v["group"] for v in vanilla}
+            if wp["nextTo"] not in ids:
+                errors.append("%s: nextTo %s is not one of the game's waypoints" % (wp["id"], wp["nextTo"]))
+            elif groups[wp["nextTo"]] != wp["group"]:
+                warnings.append("%s: nextTo %s is in the group %s, not %s: the story locks them at different times" % (
+                    wp["id"], wp["nextTo"], groups[wp["nextTo"]], wp["group"]))
     else:
         warnings.append("no tools/.cache/vanilla_waypoints.json: the game's own waypoints were not compared")
     version = cache_version()
@@ -478,6 +491,7 @@ def check_game(waypoints, errors, warnings):
                         "zones, so most of the level was not checked (run tools/extract_game_data.py again)")
     story = load_story()
     checked = 0
+    follow = {"neighbours": {}, "zones": {}}
     for level in sorted({wp["level"] for wp in waypoints}):
         if not Level.available(level):
             warnings.append("%s is not in the game cache: its waypoints were not checked against the game "
@@ -493,8 +507,56 @@ def check_game(waypoints, errors, warnings):
             errors += e
             warnings += w
             warnings += zone_warnings(lv, story, wp)
+            follow["neighbours"][wp["id"]] = wp["nextTo"]
+            follow["zones"][wp["id"]] = zone_sentences(lv, story, wp)
             checked += 1
-    return checked
+    return checked, follow
+
+
+def zone_sentences(lv, story, wp):
+    """The story's travel zones over the shrine or the arrival point, as sentences."""
+    out = set()
+    for point in (wp["trigger"]["position"], wp["shrine"]["position"]):
+        for o, entries in story_zones(lv, story, point):
+            for e in entries:
+                out.add("%s zone %s on %s (%s/%s)%s" % (e["type"], e["id"] or "", o["name"], e["module"], e["goal"],
+                                                        ", taken away there" if e["removed"] else ""))
+    return sorted(out)
+
+
+def check_followed(waypoints, follow, warnings, accept=False):
+    """Patch day: what the game's story does with what the waypoints follow, against story_baseline.json.
+    Returns a note for the summary, or None."""
+    story = load_story()
+    if "rules" not in story:
+        warnings.append("the game cache's story.json is older than the patch-day check: run tools/extract_game_data.py again")
+        return None
+    current = followed_story(waypoints, story, follow["neighbours"], follow["zones"])
+    patch = cache_patch()
+    if accept:
+        with open(BASELINE_FILE, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump({"patch": patch, "follows": current}, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+        return "the story they follow recorded for %s in story_baseline.json" % patch
+    if not os.path.exists(BASELINE_FILE):
+        warnings.append("no story_baseline.json: once you have looked at what the story does with what the waypoints "
+                        "follow, record it with python tools/build_waypoints.py --accept-story")
+        return None
+    with open(BASELINE_FILE, encoding="utf-8") as fh:
+        baseline = json.load(fh)
+    changes = story_changes(baseline.get("follows", {}), current)
+    for c in changes:
+        warnings.append("patch day: " + c)
+    if changes:
+        warnings.append("patch day: the story changed for what the waypoints follow since %s (%d change%s above). Look at "
+                        "each; if a waypoint should follow a new lock, give it lockWith; then record the story with "
+                        "python tools/build_waypoints.py --accept-story" % (
+                            baseline.get("patch"), len(changes), "" if len(changes) == 1 else "s"))
+        return "the story they follow changed since %s" % baseline.get("patch")
+    if baseline.get("patch") != patch:
+        warnings.append("patch day: the story they follow is as on %s; record that it was checked on %s with "
+                        "python tools/build_waypoints.py --accept-story" % (baseline.get("patch"), patch))
+    return "the story they follow as on %s" % baseline.get("patch")
 
 
 def zone_warnings(lv, story, wp):
@@ -522,6 +584,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="only check, and fail if the generated files are out of date")
     ap.add_argument("--version", default=None, help="also check that the mod is version X.Y.Z (release builds)")
+    ap.add_argument("--accept-story", action="store_true",
+                    help="record what the story does with what the waypoints follow in story_baseline.json (after a patch, "
+                         "once its changes were looked at)")
     args = ap.parse_args()
 
     data = load(DATA_FILE)
@@ -533,7 +598,10 @@ def main():
             print("ERROR  " + e)
         return 1
     waypoints = data["waypoints"]
-    checked = check_game(waypoints, errors, warnings)
+    checked, follow = check_game(waypoints, errors, warnings)
+    story_note = check_followed(waypoints, follow, warnings, args.accept_story) if checked == len(waypoints) else None
+    if args.accept_story and checked != len(waypoints):
+        errors.append("--accept-story needs every waypoint's level in the game cache (run tools/extract_game_data.py)")
 
     files = all_files(waypoints)
     existing = set()
@@ -579,8 +647,8 @@ def main():
             for dirpath, _, _ in os.walk(d, topdown=False):
                 if dirpath != d and not os.listdir(dirpath):
                     os.rmdir(dirpath)
-    print("%d waypoints OK (%d checked against the game files, cache: %s)." % (
-        len(waypoints), checked, "yes" if os.path.isdir(CACHE) else "no"))
+    print("%d waypoints OK (%d checked against the game files, cache: %s%s)." % (
+        len(waypoints), checked, "yes" if os.path.isdir(CACHE) else "no", "; " + story_note if story_note else ""))
     return 0
 
 

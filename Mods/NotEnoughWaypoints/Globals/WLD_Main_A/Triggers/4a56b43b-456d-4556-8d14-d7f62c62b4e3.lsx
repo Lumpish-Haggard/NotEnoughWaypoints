@@ -5,7 +5,7 @@
 		<node id="Templates">
 			<children>
 				<node id="GameObjects">
-					<attribute id="Angle" type="float" value="-1" />
+					<attribute id="Angle" type="float" value="135" />
 					<attribute id="Flag" type="int32" value="1" />
 					<attribute id="IsGlobal" type="bool" value="True" />
 					<attribute id="LevelName" type="FixedString" value="WLD_Main_A" />
@@ -29,7 +29,7 @@
 						</node>
 						<node id="Transform">
 							<attribute id="Position" type="fvec3" value="182.75 17.777 552.25" />
-							<attribute id="RotationQuat" type="fvec4" value="0 0 0 1" />
+							<attribute id="RotationQuat" type="fvec4" value="0 0.7071068 0 0.7071068" />
 							<attribute id="Scale" type="float" value="1" />
 						</node>
 					</children>

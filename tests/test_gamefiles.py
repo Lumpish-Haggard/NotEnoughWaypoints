@@ -245,6 +245,18 @@ class Story(unittest.TestCase):
         blocked = s["zones"]["79fedabd-52a5-4d81-9169-ec7d5d43e8c4"]
         self.assertTrue(blocked[0]["removed"])
         self.assertNotIn("00000000-0000-0000-0000-000000000000", s["zones"])   # commented out
+        self.assertEqual(s["rules"], {})   # only the game's waypoint rules are fingerprinted
+
+    def test_rules_and_underdark(self):
+        rules = "KBSECTION\nPROC\nPROC_UnlockWaypoint((STRING)_ID,(CHARACTER)_P)\nTHEN\nDB_NOOP(1);\n"
+        glut = ('INITSECTION\nDB_UND_BroodingSpovereign_UnderdarkWaypoints("WAYP_UND_Beach");\n'
+                'NOT DB_UND_BroodingSpovereign_UnderdarkWaypoints("WAYP_UND_Gone");\n')
+        s = gamefiles.story([("Shared", "_Waypoints", rules), ("Gustav", "Act1_UND_MyconidCircle_BroodingMyconid", glut)])
+        self.assertEqual(s["underdark"], ["WAYP_UND_Beach"])   # a fact taken away does not count
+        same = gamefiles.story([("Shared", "_Waypoints", "// a note\n" + rules.replace("\n", "\n  "))])
+        self.assertEqual(s["rules"], same["rules"])   # comments and spacing do not change the fingerprint
+        other = gamefiles.story([("Shared", "_Waypoints", rules.replace("DB_NOOP(1)", "DB_NOOP(2)"))])
+        self.assertNotEqual(s["rules"], other["rules"])
 
 
 class Volumes(unittest.TestCase):
